@@ -158,7 +158,6 @@
         }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
 
         async function entrarNaFila() {
-            // Busca se o usuário já está na fila (corrigido para ignorar erro de múltiplas linhas)
             const { data: existente, error: erroBusca } = await supabaseClient
                 .from('fila')
                 .select('nome')
@@ -250,12 +249,20 @@
 
         carregarFila();
         
+        // Atualiza a fila em tempo real via WebSocket do Supabase
         supabaseClient
             .channel('public:fila')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'fila' }, () => {
                 carregarFila();
             })
             .subscribe();
+
+        // Garante atualização instantânea caso o aplicativo volte do segundo plano no Android
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+                carregarFila();
+            }
+        });
     </script>
 </body>
 </html>
