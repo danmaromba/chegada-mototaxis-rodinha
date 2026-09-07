@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fila do Ponto de Mototáxis</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        body { background-color: #f4f6f9; color: #333; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; font-size: 22px; margin-bottom: 10px; color: #2c3e50; }
+        .status { text-align: center; padding: 10px; border-radius: 8px; font-weight: bold; margin-bottom: 20px; }
+        .status.na-fila { background-color: #d4edda; color: #155724; }
+        .status.fora { background-color: #f8d7da; color: #721c24; }
+        .status.aguardando { background-color: #fff3cd; color: #856404; }
+        h2 { font-size: 16px; margin-bottom: 10px; color: #555; }
+        ul { list-style: none; }
+        li { background: #e9ecef; padding: 10px 15px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
+        li.primeiro { background: #cce5ff; border-left: 5px solid #004085; font-weight: bold; }
+        .info-gps { font-size: 12px; color: #666; text-align: center; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Fila do Ponto 🏍️</h1>
+        
+        <div id="status-box" class="status fora">
+            Status: Fora da fila
+        </div>
+
+        <h2>Próximos da vez:</h2>
+        <ul id="lista-fila">
+            <li>Carregando fila...</li>
+        </ul>
+
+        <div class="info-gps" id="info-gps">
+            Aguardando sinal do GPS...
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURAÇÃO DO SUPABASE ---
+        // Cole suas chaves do Supabase aqui embaixo quando criar o projeto:
+        const SUPABASE_URL = 'https://etaiheynljzhvpaqusm.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_DkBXJjtKJCBqjy2aNF8kFg_yKMK0hwg';
+        
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Identificação do mototáxi (Em um app real, você pode pedir o nome na primeira vez e salvar no localStorage)
+        const nomeMototaxista = prompt("Digite seu Nome ou Apelido:") || "Motoqueiro Anônimo";
+
+        // Coordenadas do Ponto de Mototáxis (Exemplo: Substitua pela latitude e longitude exata do seu ponto)
+        const PONTO_LAT = -23.550520; 
+        const PONTO_LNG = -46.633308;
+        const RAIO_METROS = 10;
+
+        let tempoParado = null;
+        let estaNaFila = false;
+
+        // Função para calcular a distância em metros entre duas coordenadas de GPS
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Raio da Terra em metros
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; // Distância em metros
+        }
+
+        // Monitorando o GPS do celular em tempo real
+        navigator.geolocation.watchPosition((pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const distancia = calcularDistancia(lat, lng, PONTO_LAT, PONTO_LNG);
+
+            document.getElementById('info-gps').innerText = `Distância do ponto: ${Math.round(distancia)}m`;
+
+            if (distancia <= RAIO_METROS) {
+                // Entrou no raio de 10 metros
+                if (!estaNaFila && !tempoParado) {
+                    document.getElementById('status-box').className = 'status aguardando';
+                    document.getElementById('status-box').innerText = 'Status: Detectado no ponto. Aguardando 20s...';
+                    
+                    // Conta 20 segundos parado para confirmar que estacionou
+                    tempoParado = setTimeout(() => {
+                        entrarNaFila();
+                    }, 20000); // 20 segundos
+                }
+            } else {
+                // Saiu do raio
+                if (tempoParado) {
+                    clearTimeout(tempoParado);
+                    tempoParado = null;
+                }
+                if (estaNaFila) {
+                    sairDaFila();
+                } else {
+                    document.getElementById('status-box').className = 'status fora';
+                    document.getElementById('status-box').innerText = 'Status: Fora da fila';
+                }
+            }
+        }, (err) => {
+            console.error(err);
+            document.getElementById('info-gps').innerText = 'Erro ao obter GPS. Verifique a permissão.';
+        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
+
+        // Funções de comunicação com o Supabase
+        async function entrarNaFila() {
+            estaNaFila = true;
+            document.getElementById('status-box').className = 'status na-fila';
+            document.getElementById('status-box').innerText = 'Status: Na Fila!';
+
+            // Insere o mototáxi no banco de dados do Supabase
+            await supabaseClient.from('fila_mototaxi').insert([
+                { nome: nomeMototaxista, criado_em: new Date() }
+            ]);
+            carregarFila();
+        }
+
+        async function sairDaFila() {
+            estaNaFila = false;
+            document.getElementById('status-box').className = 'status fora';
+            document.getElementById('status-box').innerText = 'Status: Saiu para corrida';
+
+            // Remove o mototáxi da fila do Supabase
+            await supabaseClient.from('fila_mototaxi').delete().eq('nome', nomeMototaxista);
+            carregarFila();
+        }
+
+        async function carregarFila() {
+            const { data, error } = await supabaseClient
+                .from('fila_mototaxi')
+                .select('*')
+                .order('criado_em', { ascending: true }); // Quem chegou primeiro fica no topo
+
+            const listaUl = document.getElementById('lista-fila');
+            listaUl.innerHTML = '';
+
+            if (error) {
+                console.error('Erro ao buscar fila:', error);
+                return;
+            }
+
+            if (data.length === 0) {
+                listaUl.innerHTML = '<li>A fila está vazia.</li>';
+                return;
+            }
+
+            data.forEach((moto, index) => {
+                const li = document.createElement('li');
+                if (index === 0) li.classList.add('primeiro');
+                li.innerHTML = `<span>${index + 1}º - ${moto.nome}</span>`;
+                listaUl.appendChild(li);
+            });
+        }
+
+        // Atualiza a fila ao abrir o app e ativa o modo tempo real (Realtime)
+        carregarFila();
+        
+        supabaseClient
+            .channel('public:fila_mototaxi')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'fila_mototaxi' }, () => {
+                carregarFila();
+            })
+            .subscribe();
+    </script>
+</body>
+</html>
