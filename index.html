@@ -1,24 +1,9 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-
-    
-   
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fila do Ponto - Mototáxis Rodinha</title>
-
-    <!-- Meta Tags OpenGraph para Redes Sociais / WhatsApp -->
-    <meta property="og:title" content="Fila do Ponto Rodinha- Mototáxis 🏍️">
-    <meta property="og:description" content="Acompanhe a ordem de chegada e a sua posição atual na fila do ponto em tempo real.">
-    <meta property="og:image" content="https://etaiheynljzhzvpaqusm.supabase.co/storage/v1/object/public/product-images/botao.png">
-    <meta property="og:url" content="https://etaiheynljzhzvpaqusm.supabase.co/storage/v1/object/public/product-images/botao.png">
-    <meta property="og:type" content="https://etaiheynljzhzvpaqusm.supabase.co/storage/v1/object/public/product-images/botao.png">
-
-
-
-
-    
+    <title>Fila do Ponto de Mototáxis</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
@@ -80,8 +65,11 @@
         }
 
         function trocarNome() {
-            localStorage.removeItem('mototaxi_nome');
-            location.reload();
+            // Se trocar de nome, remove do banco com o nome antigo antes de recarregar
+            supabaseClient.from('fila').delete().eq('nome', nomeMototaxista).then(() => {
+                localStorage.removeItem('mototaxi_nome');
+                location.reload();
+            });
         }
 
         const nomeMototaxista = obterNomeMototaxista();
@@ -123,6 +111,20 @@
                       Math.sin(dLon/2) * Math.sin(dLon/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             return R * c;
+        }
+
+        // Verifica logo na inicialização se o usuário já consta na fila do banco de dados
+        async function verificarSeJaEstaNaFila() {
+            const { data, error } = await supabaseClient
+                .from('fila')
+                .select('nome')
+                .eq('nome', nomeMototaxista);
+
+            if (!error && data && data.length > 0) {
+                estaNaFila = true;
+                document.getElementById('status-box').className = 'status na-fila';
+                document.getElementById('status-box').innerText = 'Status: Na Fila!';
+            }
         }
 
         navigator.geolocation.watchPosition((pos) => {
@@ -173,14 +175,11 @@
         }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
 
         async function entrarNaFila() {
-            const { data: existente, error: erroBusca } = await supabaseClient
+            // Checa novamente antes de inserir para evitar duplicidade
+            const { data: existente } = await supabaseClient
                 .from('fila')
                 .select('nome')
                 .eq('nome', nomeMototaxista);
-
-            if (erroBusca) {
-                console.error('Erro ao verificar existência na fila:', erroBusca);
-            }
 
             if (existente && existente.length > 0) {
                 estaNaFila = true;
@@ -209,6 +208,7 @@
 
         async function sairDaFila() {
             estaNaFila = false;
+            tempoParado = null; // Reseta o cronômetro para permitir recontagem se voltar
             document.getElementById('status-box').className = 'status fora';
             document.getElementById('status-box').innerText = 'Status: Fora da fila / GPS ausente';
 
@@ -262,7 +262,9 @@
             });
         }
 
+        // Executa inicializações
         carregarFila();
+        verificarSeJaEstaNaFila();
         
         // Atualiza a fila em tempo real via WebSocket do Supabase
         supabaseClient
@@ -276,6 +278,7 @@
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
                 carregarFila();
+                verificarSeJaEstaNaFila();
             }
         });
     </script>
