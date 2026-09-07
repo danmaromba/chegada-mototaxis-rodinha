@@ -19,6 +19,8 @@
         li { background: #e9ecef; padding: 10px 15px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
         li.primeiro { background: #cce5ff; border-left: 5px solid #004085; font-weight: bold; }
         .info-gps { font-size: 12px; color: #666; text-align: center; margin-top: 15px; }
+        .btn-trocar { display: block; width: 100%; margin-top: 15px; padding: 8px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .btn-trocar:hover { background: #5a6268; }
     </style>
 </head>
 <body>
@@ -38,22 +40,55 @@
         <div class="info-gps" id="info-gps">
             Aguardando sinal do GPS...
         </div>
+
+        <button class="btn-trocar" onclick="trocarNome()">Alterar meu nome / apelido</button>
     </div>
 
     <script>
         // --- CONFIGURAÇÃO DO SUPABASE ---
-        // Cole suas chaves do Supabase aqui embaixo quando criar o projeto:
         const SUPABASE_URL = 'https://etaiheynljzhvpaqusm.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_DkBXJjtKJCBqjy2aNF8kFg_yKMK0hwg';
         
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Identificação do mototáxi (Em um app real, você pode pedir o nome na primeira vez e salvar no localStorage)
-        const nomeMototaxista = prompt("Digite seu Nome ou Apelido:") || "Motoqueiro Anônimo";
+        // --- SISTEMA DE IDENTIFICAÇÃO COM LOCALSTORAGE ---
+        function obterNomeMototaxista() {
+            let nome = localStorage.getItem('mototaxi_nome');
+            if (!nome || nome.trim() === "") {
+                nome = prompt("Digite seu Nome ou Apelido:") || "Motoqueiro Anônimo";
+                localStorage.setItem('mototaxi_nome', nome.trim());
+            }
+            return nome.trim();
+        }
 
-        // Coordenadas do Ponto de Mototáxis (Exemplo: Substitua pela latitude e longitude exata do seu ponto)
-        const PONTO_LAT = -23.550520; 
-        const PONTO_LNG = -46.633308;
+        function trocarNome() {
+            localStorage.removeItem('mototaxi_nome');
+            location.reload();
+        }
+
+        const nomeMototaxista = obterNomeMototaxista();
+
+        // --- FUNÇÕES DE VOZ E VIBRAÇÃO ---
+        function falar(texto) {
+            if ('speechSynthesis' in window) {
+                // Cancela qualquer fala anterior para não embolar
+                window.speechSynthesis.cancel();
+                const mensagem = new SpeechSynthesisUtterance(texto);
+                mensagem.lang = 'pt-BR';
+                mensagem.rate = 1.1; // Velocidade um pouquinho mais rápida
+                window.speechSynthesis.speak(mensagem);
+            }
+        }
+
+        function vibrar(padrao) {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(padrao);
+            }
+        }
+
+        // Coordenadas do Ponto de Mototáxis
+        const PONTO_LAT = -8.43982699740795; 
+        const PONTO_LNG = -35.01837120871769;
         const RAIO_METROS = 10;
 
         let tempoParado = null;
@@ -114,6 +149,10 @@
             document.getElementById('status-box').className = 'status na-fila';
             document.getElementById('status-box').innerText = 'Status: Na Fila!';
 
+            // 📳 Vibra o celular (vibra 300ms, pausa 100ms, vibra 300ms) e 🗣️ Fala
+            vibrar([300, 100, 300]);
+            falar("Você entrou na fila do ponto.");
+
             // Insere o mototáxi no banco de dados do Supabase
             await supabaseClient.from('fila_mototaxi').insert([
                 { nome: nomeMototaxista, criado_em: new Date() }
@@ -126,6 +165,10 @@
             document.getElementById('status-box').className = 'status fora';
             document.getElementById('status-box').innerText = 'Status: Saiu para corrida';
 
+            // 📳 Vibra forte uma vez longa (500ms) e 🗣️ Fala
+            vibrar(500);
+            falar("Você saiu da fila. Boa corrida!");
+
             // Remove o mototáxi da fila do Supabase
             await supabaseClient.from('fila_mototaxi').delete().eq('nome', nomeMototaxista);
             carregarFila();
@@ -135,7 +178,7 @@
             const { data, error } = await supabaseClient
                 .from('fila_mototaxi')
                 .select('*')
-                .order('criado_em', { ascending: true }); // Quem chegou primeiro fica no topo
+                .order('criado_em', { ascending: true });
 
             const listaUl = document.getElementById('lista-fila');
             listaUl.innerHTML = '';
