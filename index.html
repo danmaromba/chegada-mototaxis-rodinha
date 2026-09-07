@@ -50,9 +50,8 @@
 
     <script>
         // --- CONFIGURAÇÃO DO SUPABASE ---
-        const SUPABASE_URL = 'https://etaiheynljzhzvpaqusm.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_DkBXJjtKJCBqjy2aNF8kFg_yKMK0hwg
-';
+        const SUPABASE_URL = 'https://etaiheynljzhvpaqusm.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_DkBXJjtKJCBqjy2aNF8kFg_yKMK0hwg';
         
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -150,7 +149,6 @@
             vibrar([300, 100, 300]);
             falar("Você entrou na fila do ponto.");
 
-            // Enviando apenas o nome; o banco preenche a hora e o ID automaticamente
             const { error } = await supabaseClient.from('fila_mototaxi').insert([
                 { nome: nomeMototaxista }
             ]);
@@ -204,7 +202,6 @@
                 const li = document.createElement('li');
                 if (index === 0) li.classList.add('primeiro');
 
-                // Formata a data do banco para o horário local
                 const dataChegada = moto.criado_em ? new Date(moto.criado_em) : new Date();
                 const horaFormatada = dataChegada.toLocaleTimeString('pt-BR');
 
@@ -219,10 +216,8 @@
             });
         }
 
-        // Carrega a fila ao abrir a página
         carregarFila();
         
-        // Mantém atualizado em tempo real via WebSocket do Supabase
         supabaseClient
             .channel('public:fila_mototaxi')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'fila_mototaxi' }, () => {
