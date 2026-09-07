@@ -149,7 +149,7 @@
             vibrar([300, 100, 300]);
             falar("Você entrou na fila do ponto.");
 
-            const { error } = await supabaseClient.from('fila_mototaxi').insert([
+            const { error } = await supabaseClient.from('fila').insert([
                 { nome: nomeMototaxista }
             ]);
 
@@ -169,7 +169,7 @@
             vibrar(500);
             falar("Você saiu da fila. Boa corrida!");
 
-            const { error } = await supabaseClient.from('fila_mototaxi').delete().eq('nome', nomeMototaxista);
+            const { error } = await supabaseClient.from('fila').delete().eq('nome', nomeMototaxista);
             
             if (error) {
                 console.error('Erro ao deletar:', error);
@@ -180,7 +180,7 @@
 
         async function carregarFila() {
             const { data, error } = await supabaseClient
-                .from('fila_mototaxi')
+                .from('fila')
                 .select('*')
                 .order('criado_em', { ascending: true });
 
@@ -219,8 +219,8 @@
         carregarFila();
         
         supabaseClient
-            .channel('public:fila_mototaxi')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'fila_mototaxi' }, () => {
+            .channel('public:fila')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'fila' }, () => {
                 carregarFila();
             })
             .subscribe();
