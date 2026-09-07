@@ -14,6 +14,7 @@
         .status.na-fila { background-color: #d4edda; color: #155724; }
         .status.fora { background-color: #f8d7da; color: #721c24; }
         .status.aguardando { background-color: #fff3cd; color: #856404; }
+        .status.erro-gps { background-color: #fce8e6; color: #c5221f; border: 1px dashed #c5221f; }
         h2 { font-size: 16px; margin-bottom: 10px; color: #555; }
         ul { list-style: none; }
         li { background: #e9ecef; padding: 10px 15px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
@@ -49,13 +50,11 @@
     </div>
 
     <script>
-        // --- COLE AQUI A SUA URL E CHAVE DO SUPABASE ATUALIZADAS ---
         const SUPABASE_URL = 'https://etaiheynljzhzvpaqusm.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_DkBXJjtKJCBqjy2aNF8kFg_yKMK0hwg';
         
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // --- SISTEMA DE IDENTIFICAÇÃO COM LOCALSTORAGE ---
         function obterNomeMototaxista() {
             let nome = localStorage.getItem('mototaxi_nome');
             if (!nome || nome.trim() === "") {
@@ -72,7 +71,6 @@
 
         const nomeMototaxista = obterNomeMototaxista();
 
-        // --- FUNÇÕES DE VOZ E VIBRAÇÃO ---
         function falar(texto) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
@@ -89,13 +87,13 @@
             }
         }
 
-        // Coordenadas do Ponto de Mototáxis
         const PONTO_LAT = -8.43982699740795; 
         const PONTO_LNG = -35.01837120871769;
         const RAIO_METROS = 50;
 
         let tempoParado = null;
         let estaNaFila = false;
+        let avisoGpsFalado = false;
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
@@ -109,6 +107,9 @@
         }
 
         navigator.geolocation.watchPosition((pos) => {
+            // Se o GPS voltou a funcionar, reseta o aviso
+            avisoGpsFalado = false;
+            
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
             const distancia = calcularDistancia(lat, lng, PONTO_LAT, PONTO_LNG);
@@ -138,10 +139,42 @@
             }
         }, (err) => {
             console.error(err);
-            document.getElementById('info-gps').innerText = 'Erro ao obter GPS. Verifique a permissão.';
+            document.getElementById('info-gps').innerText = 'GPS desativado ou sem sinal!';
+            document.getElementById('status-box').className = 'status erro-gps';
+            document.getElementById('status-box').innerText = 'Status: GPS Desligado/Sem Sinal!';
+
+            if (!avisoGpsFalado) {
+                avisoGpsFalado = true;
+                vibrar([400, 200, 400]);
+                falar("Atenção, seu GPS foi desativado ou perdeu o sinal. Ative o GPS.");
+            }
+
+            // Se o GPS caiu/desativou e ele estava na fila, remove automaticamente
+            if (estaNaFila) {
+                sairDaFila();
+            }
         }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
 
         async function entrarNaFila() {
+            // Validação rigorosa: verifica no banco se o usuário já está na fila antes de inserir
+            const { data: existente, error: erroBusca } = await supabaseClient
+                .from('fila')
+                .select('nome')
+                .eq('nome', nomeMototaxista)
+                .maybeSingle();
+
+            if (erroBusca) {
+                console.error('Erro ao verificar existência na fila:', erroBusca);
+            }
+
+            if (existente) {
+                // Já está na fila registrada no banco, apenas atualiza o estado local
+                estaNaFila = true;
+                document.getElementById('status-box').className = 'status na-fila';
+                document.getElementById('status-box').innerText = 'Status: Na Fila!';
+                return;
+            }
+
             estaNaFila = true;
             document.getElementById('status-box').className = 'status na-fila';
             document.getElementById('status-box').innerText = 'Status: Na Fila!';
@@ -155,7 +188,6 @@
 
             if (error) {
                 console.error('Erro ao inserir:', error);
-                alert('Erro ao entrar na fila: ' + error.message);
             }
 
             carregarFila();
@@ -164,10 +196,10 @@
         async function sairDaFila() {
             estaNaFila = false;
             document.getElementById('status-box').className = 'status fora';
-            document.getElementById('status-box').innerText = 'Status: Saiu para corrida';
+            document.getElementById('status-box').innerText = 'Status: Fora da fila / GPS ausente';
 
             vibrar(500);
-            falar("Você saiu da fila. Boa corrida!");
+            falar("Você saiu da fila.");
 
             const { error } = await supabaseClient.from('fila').delete().eq('nome', nomeMototaxista);
             
