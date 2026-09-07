@@ -83,7 +83,11 @@
 
         function vibrar(padrao) {
             if ('vibrate' in navigator) {
-                navigator.vibrate(padrao);
+                try {
+                    navigator.vibrate(padrao);
+                } catch (e) {
+                    console.error("Vibração bloqueada até interação do usuário", e);
+                }
             }
         }
 
@@ -107,7 +111,6 @@
         }
 
         navigator.geolocation.watchPosition((pos) => {
-            // Se o GPS voltou a funcionar, reseta o aviso
             avisoGpsFalado = false;
             
             const lat = pos.coords.latitude;
@@ -149,26 +152,23 @@
                 falar("Atenção, seu GPS foi desativado ou perdeu o sinal. Ative o GPS.");
             }
 
-            // Se o GPS caiu/desativou e ele estava na fila, remove automaticamente
             if (estaNaFila) {
                 sairDaFila();
             }
         }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
 
         async function entrarNaFila() {
-            // Validação rigorosa: verifica no banco se o usuário já está na fila antes de inserir
+            // Busca se o usuário já está na fila (corrigido para ignorar erro de múltiplas linhas)
             const { data: existente, error: erroBusca } = await supabaseClient
                 .from('fila')
                 .select('nome')
-                .eq('nome', nomeMototaxista)
-                .maybeSingle();
+                .eq('nome', nomeMototaxista);
 
             if (erroBusca) {
                 console.error('Erro ao verificar existência na fila:', erroBusca);
             }
 
-            if (existente) {
-                // Já está na fila registrada no banco, apenas atualiza o estado local
+            if (existente && existente.length > 0) {
                 estaNaFila = true;
                 document.getElementById('status-box').className = 'status na-fila';
                 document.getElementById('status-box').innerText = 'Status: Na Fila!';
