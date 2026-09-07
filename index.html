@@ -149,9 +149,16 @@
             vibrar([300, 100, 300]);
             falar("Você entrou na fila do ponto.");
 
-            await supabaseClient.from('fila_mototaxi').insert([
-                { nome: nomeMototaxista, criado_em: new Date() }
+            // Enviando apenas o nome; o banco preenche a hora e o ID automaticamente
+            const { error } = await supabaseClient.from('fila_mototaxi').insert([
+                { nome: nomeMototaxista }
             ]);
+
+            if (error) {
+                console.error('Erro ao inserir:', error);
+                alert('Erro ao entrar na fila: ' + error.message);
+            }
+
             carregarFila();
         }
 
@@ -163,7 +170,12 @@
             vibrar(500);
             falar("Você saiu da fila. Boa corrida!");
 
-            await supabaseClient.from('fila_mototaxi').delete().eq('nome', nomeMototaxista);
+            const { error } = await supabaseClient.from('fila_mototaxi').delete().eq('nome', nomeMototaxista);
+            
+            if (error) {
+                console.error('Erro ao deletar:', error);
+            }
+
             carregarFila();
         }
 
@@ -178,10 +190,11 @@
 
             if (error) {
                 console.error('Erro ao buscar fila:', error);
+                listaUl.innerHTML = '<li>Erro ao carregar a fila do banco.</li>';
                 return;
             }
 
-            if (data.length === 0) {
+            if (!data || data.length === 0) {
                 listaUl.innerHTML = '<li>A fila está vazia.</li>';
                 return;
             }
@@ -190,8 +203,8 @@
                 const li = document.createElement('li');
                 if (index === 0) li.classList.add('primeiro');
 
-                // Formata a data do banco para o horário local (Ex: 09:45:12)
-                const dataChegada = new Date(moto.criado_em);
+                // Formata a data do banco para o horário local
+                const dataChegada = moto.criado_em ? new Date(moto.criado_em) : new Date();
                 const horaFormatada = dataChegada.toLocaleTimeString('pt-BR');
 
                 li.innerHTML = `
@@ -205,8 +218,10 @@
             });
         }
 
+        // Carrega a fila ao abrir a página
         carregarFila();
         
+        // Mantém atualizado em tempo real via WebSocket do Supabase
         supabaseClient
             .channel('public:fila_mototaxi')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'fila_mototaxi' }, () => {
