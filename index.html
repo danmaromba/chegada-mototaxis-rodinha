@@ -18,6 +18,10 @@
         ul { list-style: none; }
         li { background: #e9ecef; padding: 10px 15px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
         li.primeiro { background: #cce5ff; border-left: 5px solid #004085; font-weight: bold; }
+        .moto-info { display: flex; flex-direction: column; }
+        .moto-nome { font-size: 15px; font-weight: bold; color: #2c3e50; }
+        .moto-hora { font-size: 12px; color: #666; margin-top: 2px; }
+        .moto-posicao { font-size: 16px; font-weight: bold; color: #004085; }
         .info-gps { font-size: 12px; color: #666; text-align: center; margin-top: 15px; }
         .btn-trocar { display: block; width: 100%; margin-top: 15px; padding: 8px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; }
         .btn-trocar:hover { background: #5a6268; }
@@ -71,11 +75,10 @@
         // --- FUNÇÕES DE VOZ E VIBRAÇÃO ---
         function falar(texto) {
             if ('speechSynthesis' in window) {
-                // Cancela qualquer fala anterior para não embolar
                 window.speechSynthesis.cancel();
                 const mensagem = new SpeechSynthesisUtterance(texto);
                 mensagem.lang = 'pt-BR';
-                mensagem.rate = 1.1; // Velocidade um pouquinho mais rápida
+                mensagem.rate = 1.1;
                 window.speechSynthesis.speak(mensagem);
             }
         }
@@ -94,19 +97,17 @@
         let tempoParado = null;
         let estaNaFila = false;
 
-        // Função para calcular a distância em metros entre duas coordenadas de GPS
         function calcularDistancia(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; // Raio da Terra em metros
+            const R = 6371e3;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
                       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
                       Math.sin(dLon/2) * Math.sin(dLon/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c; // Distância em metros
+            return R * c;
         }
 
-        // Monitorando o GPS do celular em tempo real
         navigator.geolocation.watchPosition((pos) => {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
@@ -115,18 +116,15 @@
             document.getElementById('info-gps').innerText = `Distância do ponto: ${Math.round(distancia)}m`;
 
             if (distancia <= RAIO_METROS) {
-                // Entrou no raio de 10 metros
                 if (!estaNaFila && !tempoParado) {
                     document.getElementById('status-box').className = 'status aguardando';
                     document.getElementById('status-box').innerText = 'Status: Detectado no ponto. Aguardando 20s...';
                     
-                    // Conta 20 segundos parado para confirmar que estacionou
                     tempoParado = setTimeout(() => {
                         entrarNaFila();
-                    }, 20000); // 20 segundos
+                    }, 20000);
                 }
             } else {
-                // Saiu do raio
                 if (tempoParado) {
                     clearTimeout(tempoParado);
                     tempoParado = null;
@@ -143,17 +141,14 @@
             document.getElementById('info-gps').innerText = 'Erro ao obter GPS. Verifique a permissão.';
         }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
 
-        // Funções de comunicação com o Supabase
         async function entrarNaFila() {
             estaNaFila = true;
             document.getElementById('status-box').className = 'status na-fila';
             document.getElementById('status-box').innerText = 'Status: Na Fila!';
 
-            // 📳 Vibra o celular (vibra 300ms, pausa 100ms, vibra 300ms) e 🗣️ Fala
             vibrar([300, 100, 300]);
             falar("Você entrou na fila do ponto.");
 
-            // Insere o mototáxi no banco de dados do Supabase
             await supabaseClient.from('fila_mototaxi').insert([
                 { nome: nomeMototaxista, criado_em: new Date() }
             ]);
@@ -165,11 +160,9 @@
             document.getElementById('status-box').className = 'status fora';
             document.getElementById('status-box').innerText = 'Status: Saiu para corrida';
 
-            // 📳 Vibra forte uma vez longa (500ms) e 🗣️ Fala
             vibrar(500);
             falar("Você saiu da fila. Boa corrida!");
 
-            // Remove o mototáxi da fila do Supabase
             await supabaseClient.from('fila_mototaxi').delete().eq('nome', nomeMototaxista);
             carregarFila();
         }
@@ -196,12 +189,22 @@
             data.forEach((moto, index) => {
                 const li = document.createElement('li');
                 if (index === 0) li.classList.add('primeiro');
-                li.innerHTML = `<span>${index + 1}º - ${moto.nome}</span>`;
+
+                // Formata a data do banco para o horário local (Ex: 09:45:12)
+                const dataChegada = new Date(moto.criado_em);
+                const horaFormatada = dataChegada.toLocaleTimeString('pt-BR');
+
+                li.innerHTML = `
+                    <div class="moto-info">
+                        <span class="moto-nome">${moto.nome}</span>
+                        <span class="moto-hora">Chegada: ${horaFormatada}</span>
+                    </div>
+                    <span class="moto-posicao">${index + 1}º</span>
+                `;
                 listaUl.appendChild(li);
             });
         }
 
-        // Atualiza a fila ao abrir o app e ativa o modo tempo real (Realtime)
         carregarFila();
         
         supabaseClient
