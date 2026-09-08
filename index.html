@@ -289,5 +289,42 @@
             }
         });
     </script>
+    
+    <script>
+    let deferredPrompt;
+    const btnInstalar = document.getElementById('btn-instalar');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Impede que o navegador mostre o banner padrão automático (opcional, mas bom para controlar)
+        e.preventDefault();
+        // Guarda o evento para disparar quando o usuário clicar no botão
+        deferredPrompt = e;
+        // Mostra o nosso botão personalizado
+        btnInstalar.style.display = 'block';
+    });
+
+    btnInstalar.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        // Exibe a janela nativa de instalação do celular
+        deferredPrompt.prompt();
+        // Espera a escolha do usuário
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            console.log('Usuário aceitou instalar o app');
+        }
+        // Limpa a variável, pois o prompt só pode ser usado uma vez
+        deferredPrompt = null;
+        btnInstalar.style.display = 'none';
+    });
+
+    window.addEventListener('appinstalled', () => {
+        console.log('Aplicativo instalado com sucesso!');
+        btnInstalar.style.display = 'none';
+    });
+    </script>
+    
+    
+
+    
 </body>
 </html>
