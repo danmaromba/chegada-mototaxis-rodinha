@@ -2,20 +2,13 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#004085">
-
-
-
-    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#004085">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
     <title>Fila do Ponto de Mototáxis</title>
-    <button id="btn-instalar" style="display: none; width: 100%; margin-top: 15px; padding: 10px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold;">
-    📲 Instalar App no Celular
-    </button>
-    
-    
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
@@ -36,8 +29,33 @@
         .moto-hora { font-size: 12px; color: #666; margin-top: 2px; }
         .moto-posicao { font-size: 16px; font-weight: bold; color: #004085; }
         .info-gps { font-size: 12px; color: #666; text-align: center; margin-top: 15px; }
-        .btn-trocar { display: block; width: 100%; margin-top: 15px; padding: 8px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .btn-trocar {
+            display: block;
+            width: 100%;
+            margin-top: 15px;
+            padding: 10px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
         .btn-trocar:hover { background: #5a6268; }
+        #btn-instalar {
+            display: none;
+            width: 100%;
+            margin-top: 12px;
+            padding: 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        #btn-instalar:hover { background: #218838; }
     </style>
 </head>
 <body>
@@ -59,6 +77,11 @@
         </div>
 
         <button class="btn-trocar" onclick="trocarNome()">Alterar meu nome / apelido</button>
+
+        <!-- Botão de instalação do PWA (no lugar correto, dentro do body) -->
+        <button id="btn-instalar">
+            📲 Instalar App no Celular
+        </button>
     </div>
 
     <script>
@@ -76,12 +99,15 @@
             return nome.trim();
         }
 
-        function trocarNome() {
-            // Se trocar de nome, remove do banco com o nome antigo antes de recarregar
-            supabaseClient.from('fila').delete().eq('nome', nomeMototaxista).then(() => {
+        async function trocarNome() {
+            try {
+                await supabaseClient.from('fila').delete().eq('nome', nomeMototaxista);
+            } catch (err) {
+                console.error('Erro ao remover nome antigo da fila:', err);
+            } finally {
                 localStorage.removeItem('mototaxi_nome');
                 location.reload();
-            });
+            }
         }
 
         const nomeMototaxista = obterNomeMototaxista();
@@ -125,7 +151,6 @@
             return R * c;
         }
 
-        // Verifica logo na inicialização se o usuário já consta na fila do banco de dados
         async function verificarSeJaEstaNaFila() {
             const { data, error } = await supabaseClient
                 .from('fila')
@@ -139,52 +164,62 @@
             }
         }
 
-        navigator.geolocation.watchPosition((pos) => {
-            avisoGpsFalado = false;
-            
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            const distancia = calcularDistancia(lat, lng, PONTO_LAT, PONTO_LNG);
+        function iniciarGPS() {
+            if (!navigator.geolocation) {
+                document.getElementById('info-gps').innerText = 'Seu navegador não suporta GPS.';
+                document.getElementById('status-box').className = 'status erro-gps';
+                document.getElementById('status-box').innerText = 'Status: GPS não suportado';
+                falar("Seu navegador não suporta localização GPS.");
+                return;
+            }
 
-            document.getElementById('info-gps').innerText = `Distância do ponto: ${Math.round(distancia)}m`;
+            navigator.geolocation.watchPosition((pos) => {
+                avisoGpsFalado = false;
+                
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                const distancia = calcularDistancia(lat, lng, PONTO_LAT, PONTO_LNG);
 
-            if (distancia <= RAIO_METROS) {
-                if (!estaNaFila && !tempoParado) {
-                    document.getElementById('status-box').className = 'status aguardando';
-                    document.getElementById('status-box').innerText = 'Status: Detectado no ponto. Aguardando 20s...';
-                    
-                    tempoParado = setTimeout(() => {
-                        entrarNaFila();
-                    }, 20000);
+                document.getElementById('info-gps').innerText = `Distância do ponto: ${Math.round(distancia)}m`;
+
+                if (distancia <= RAIO_METROS) {
+                    if (!estaNaFila && !tempoParado) {
+                        document.getElementById('status-box').className = 'status aguardando';
+                        document.getElementById('status-box').innerText = 'Status: Detectado no ponto. Aguardando 20s...';
+                        
+                        tempoParado = setTimeout(() => {
+                            entrarNaFila();
+                        }, 20000);
+                    }
+                } else {
+                    if (tempoParado) {
+                        clearTimeout(tempoParado);
+                        tempoParado = null;
+                    }
+                    if (estaNaFila) {
+                        sairDaFila();
+                    } else {
+                        document.getElementById('status-box').className = 'status fora';
+                        document.getElementById('status-box').innerText = 'Status: Fora da fila';
+                    }
                 }
-            } else {
-                if (tempoParado) {
-                    clearTimeout(tempoParado);
-                    tempoParado = null;
+            }, (err) => {
+                console.error(err);
+                document.getElementById('info-gps').innerText = 'GPS desativado ou sem sinal!';
+                document.getElementById('status-box').className = 'status erro-gps';
+                document.getElementById('status-box').innerText = 'Status: GPS Desligado/Sem Sinal!';
+
+                if (!avisoGpsFalado) {
+                    avisoGpsFalado = true;
+                    vibrar([400, 200, 400]);
+                    falar("Atenção, seu GPS foi desativado ou perdeu o sinal. Ative o GPS.");
                 }
+
                 if (estaNaFila) {
                     sairDaFila();
-                } else {
-                    document.getElementById('status-box').className = 'status fora';
-                    document.getElementById('status-box').innerText = 'Status: Fora da fila';
                 }
-            }
-        }, (err) => {
-            console.error(err);
-            document.getElementById('info-gps').innerText = 'GPS desativado ou sem sinal!';
-            document.getElementById('status-box').className = 'status erro-gps';
-            document.getElementById('status-box').innerText = 'Status: GPS Desligado/Sem Sinal!';
-
-            if (!avisoGpsFalado) {
-                avisoGpsFalado = true;
-                vibrar([400, 200, 400]);
-                falar("Atenção, seu GPS foi desativado ou perdeu o sinal. Ative o GPS.");
-            }
-
-            if (estaNaFila) {
-                sairDaFila();
-            }
-        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
+            }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 8000 });
+        }
 
         async function entrarNaFila() {
             // Checa novamente antes de inserir para evitar duplicidade
@@ -220,7 +255,7 @@
 
         async function sairDaFila() {
             estaNaFila = false;
-            tempoParado = null; // Reseta o cronômetro para permitir recontagem se voltar
+            tempoParado = null;
             document.getElementById('status-box').className = 'status fora';
             document.getElementById('status-box').innerText = 'Status: Fora da fila / GPS ausente';
 
@@ -274,9 +309,10 @@
             });
         }
 
-        // Executa inicializações
+        // ========== INICIALIZAÇÃO ==========
         carregarFila();
         verificarSeJaEstaNaFila();
+        iniciarGPS();
         
         // Atualiza a fila em tempo real via WebSocket do Supabase
         supabaseClient
@@ -286,50 +322,52 @@
             })
             .subscribe();
 
-        // Garante atualização instantânea caso o aplicativo volte do segundo plano no Android
+        // Garante atualização quando o app volta do segundo plano
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
                 carregarFila();
                 verificarSeJaEstaNaFila();
             }
         });
-    </script>
-    
-    <script>
-    let deferredPrompt;
-    const btnInstalar = document.getElementById('btn-instalar');
 
-    window.addEventListener('beforeinstallprompt', (e) => {
-        // Impede que o navegador mostre o banner padrão automático (opcional, mas bom para controlar)
-        e.preventDefault();
-        // Guarda o evento para disparar quando o usuário clicar no botão
-        deferredPrompt = e;
-        // Mostra o nosso botão personalizado
-        btnInstalar.style.display = 'block';
-    });
-
-    btnInstalar.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
-        // Exibe a janela nativa de instalação do celular
-        deferredPrompt.prompt();
-        // Espera a escolha do usuário
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            console.log('Usuário aceitou instalar o app');
+        // ========== SERVICE WORKER (PWA) ==========
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((reg) => {
+                        console.log('Service Worker registrado com sucesso:', reg.scope);
+                    })
+                    .catch((err) => {
+                        console.error('Falha ao registrar Service Worker:', err);
+                    });
+            });
         }
-        // Limpa a variável, pois o prompt só pode ser usado uma vez
-        deferredPrompt = null;
-        btnInstalar.style.display = 'none';
-    });
 
-    window.addEventListener('appinstalled', () => {
-        console.log('Aplicativo instalado com sucesso!');
-        btnInstalar.style.display = 'none';
-    });
+        // ========== INSTALAÇÃO DO PWA ==========
+        let deferredPrompt;
+        const btnInstalar = document.getElementById('btn-instalar');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            btnInstalar.style.display = 'block';
+        });
+
+        btnInstalar.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('Usuário aceitou instalar o app');
+            }
+            deferredPrompt = null;
+            btnInstalar.style.display = 'none';
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('Aplicativo instalado com sucesso!');
+            btnInstalar.style.display = 'none';
+        });
     </script>
-    
-    
-
-    
 </body>
 </html>
