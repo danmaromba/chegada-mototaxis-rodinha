@@ -55,7 +55,6 @@
             100% { background-position: 0% 50%; }
         }
 
-        /* Flash de tela */
         .screen-flash {
             position: fixed;
             inset: 0;
@@ -65,11 +64,8 @@
             z-index: 9998;
             transition: opacity 0.15s;
         }
-        .screen-flash.active {
-            opacity: 0.35;
-        }
+        .screen-flash.active { opacity: 0.35; }
 
-        /* Partículas */
         .particles {
             position: fixed;
             top: 0; left: 0;
@@ -134,7 +130,6 @@
             margin-bottom: 20px;
         }
 
-        /* STATUS */
         .status {
             text-align: center;
             padding: 18px 16px;
@@ -187,6 +182,11 @@
             0%, 100% { box-shadow: 0 0 18px rgba(52, 211, 153, 0.35); }
             50% { box-shadow: 0 0 40px rgba(52, 211, 153, 0.7); }
         }
+        .status.sinal-fraco {
+            background: linear-gradient(135deg, #854d0e, #a16207);
+            color: #fef08a;
+            border: 1px solid #facc15;
+        }
         .status.erro-gps {
             background: linear-gradient(135deg, #7f1d1d, #450a0a);
             color: #fecaca;
@@ -202,7 +202,6 @@
             75% { transform: translateX(-3px); }
         }
 
-        /* Posição */
         .minha-posicao {
             text-align: center;
             font-size: 48px;
@@ -234,7 +233,6 @@
         }
         .posicao-label.show { display: block; }
 
-        /* Progresso */
         .progress-container {
             height: 8px;
             background: rgba(255,255,255,0.08);
@@ -355,8 +353,8 @@
             box-shadow: 0 0 15px rgba(52, 211, 153, 0.2);
         }
         .info-gps.longe { color: #f87171; }
+        .info-gps.fraco { color: #facc15; font-weight: 600; }
 
-        /* Radar visual */
         .radar {
             position: absolute;
             width: 40px; height: 40px;
@@ -409,7 +407,6 @@
         }
         #btn-instalar:active { transform: scale(0.95); }
 
-        /* Ripple nos botões */
         .ripple {
             position: absolute;
             border-radius: 50%;
@@ -456,7 +453,6 @@
         .toast.warn { border-color: #fbbf24; }
         .toast.error { border-color: #f87171; }
 
-        /* Emojis flutuantes */
         .float-emoji {
             position: fixed;
             font-size: 28px;
@@ -512,7 +508,7 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_DkBXJjtKJCBqjy2aNF8kFg_yKMK0hwg';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // ==================== ÁUDIO AVANÇADO ====================
+        // ==================== ÁUDIO ====================
         let audioCtx = null;
         let ambientOsc = null;
         let ambientGain = null;
@@ -559,8 +555,7 @@
             noise.start();
         }
 
-        // Sons específicos
-        function playSuccess() { // Fanfarra de vitória
+        function playSuccess() {
             initAudio();
             const notes = [523.25, 659.25, 783.99, 1046.50];
             notes.forEach((n, i) => setTimeout(() => playTone(n, 0.22, 'sine', 0.13), i * 90));
@@ -571,570 +566,4 @@
             initAudio();
             playTone(392, 0.1, 'triangle', 0.1);
             setTimeout(() => playTone(523.25, 0.12, 'triangle', 0.11), 70);
-            setTimeout(() => playTone(659.25, 0.14, 'sine', 0.12), 150);
-            setTimeout(() => playTone(783.99, 0.35, 'sine', 0.14), 240);
-            setTimeout(() => playNoise(0.15, 0.04), 100);
-        }
-
-        function playExit() {
-            initAudio();
-            playTone(392, 0.12, 'sawtooth', 0.07);
-            setTimeout(() => playTone(311.13, 0.15, 'sawtooth', 0.08), 100);
-            setTimeout(() => playTone(246.94, 0.3, 'sawtooth', 0.09), 200);
-            playNoise(0.2, 0.05);
-        }
-
-        function playWarning() {
-            initAudio();
-            for (let i = 0; i < 4; i++) {
-                setTimeout(() => {
-                    playTone(880, 0.1, 'square', 0.07);
-                    setTimeout(() => playTone(698.46, 0.1, 'square', 0.07), 110);
-                }, i * 280);
-            }
-        }
-
-        function playNear() {
-            initAudio();
-            playTone(988, 0.07, 'sine', 0.06);
-            setTimeout(() => playTone(1174.7, 0.08, 'sine', 0.05), 60);
-        }
-
-        function playClick() {
-            initAudio();
-            playTone(720, 0.04, 'sine', 0.05);
-            playTone(480, 0.05, 'triangle', 0.03);
-        }
-
-        function playCountdown() {
-            initAudio();
-            playTone(660, 0.08, 'sine', 0.07);
-        }
-
-        function playLevelUp() {
-            initAudio();
-            playTone(523.25, 0.08, 'sine', 0.08);
-            setTimeout(() => playTone(659.25, 0.08, 'sine', 0.09), 70);
-            setTimeout(() => playTone(783.99, 0.18, 'sine', 0.1), 140);
-        }
-
-        // Ambiente enquanto está na fila
-        function startAmbient() {
-            initAudio();
-            if (ambientOsc) return;
-            ambientOsc = audioCtx.createOscillator();
-            ambientGain = audioCtx.createGain();
-            ambientOsc.type = 'sine';
-            ambientOsc.frequency.value = 110;
-            ambientGain.gain.value = 0.015;
-            ambientOsc.connect(ambientGain);
-            ambientGain.connect(audioCtx.destination);
-            ambientOsc.start();
-        }
-        function stopAmbient() {
-            if (ambientOsc) {
-                ambientGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-                setTimeout(() => {
-                    try { ambientOsc.stop(); } catch(e){}
-                    ambientOsc = null;
-                }, 600);
-            }
-        }
-
-        // ==================== VISUAIS ====================
-        const flashEl = document.getElementById('flash');
-        function flashScreen() {
-            flashEl.classList.add('active');
-            setTimeout(() => flashEl.classList.remove('active'), 120);
-        }
-
-        // Confetti + Stars
-        const canvas = document.getElementById('confetti');
-        const ctx = canvas.getContext('2d');
-        const starsCanvas = document.getElementById('stars');
-        const starsCtx = starsCanvas.getContext('2d');
-        let confettiPieces = [];
-        let starPieces = [];
-        let confettiActive = false;
-
-        function resizeCanvas() {
-            canvas.width = starsCanvas.width = window.innerWidth;
-            canvas.height = starsCanvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        function createConfetti(count = 100) {
-            confettiPieces = [];
-            const colors = ['#38bdf8','#818cf8','#c084fc','#34d399','#fbbf24','#f472b6','#fb7185','#22d3ee'];
-            for (let i = 0; i < count; i++) {
-                confettiPieces.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * -canvas.height,
-                    w: Math.random() * 11 + 4,
-                    h: Math.random() * 7 + 3,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    speed: Math.random() * 4 + 2.5,
-                    angle: Math.random() * 360,
-                    spin: Math.random() * 12 - 6,
-                    opacity: 1
-                });
-            }
-            // Estrelas
-            starPieces = [];
-            for (let i = 0; i < 40; i++) {
-                starPieces.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height * 0.6,
-                    size: Math.random() * 3 + 1,
-                    speed: Math.random() * 1.5 + 0.5,
-                    opacity: 1,
-                    life: 1
-                });
-            }
-            confettiActive = true;
-            requestAnimationFrame(drawEffects);
-        }
-
-        function drawEffects() {
-            if (!confettiActive) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            starsCtx.clearRect(0, 0, starsCanvas.width, starsCanvas.height);
-            let alive = false;
-
-            confettiPieces.forEach(p => {
-                p.y += p.speed;
-                p.x += Math.sin(p.angle * Math.PI / 180) * 1.8;
-                p.angle += p.spin;
-                p.opacity -= 0.007;
-                if (p.opacity > 0 && p.y < canvas.height + 30) {
-                    alive = true;
-                    ctx.save();
-                    ctx.translate(p.x, p.y);
-                    ctx.rotate(p.angle * Math.PI / 180);
-                    ctx.globalAlpha = p.opacity;
-                    ctx.fillStyle = p.color;
-                    ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-                    ctx.restore();
-                }
-            });
-
-            starPieces.forEach(s => {
-                s.y -= s.speed;
-                s.life -= 0.012;
-                if (s.life > 0) {
-                    alive = true;
-                    starsCtx.beginPath();
-                    starsCtx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-                    starsCtx.fillStyle = `rgba(255,255,200,${s.life})`;
-                    starsCtx.fill();
-                }
-            });
-
-            if (alive) requestAnimationFrame(drawEffects);
-            else {
-                confettiActive = false;
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                starsCtx.clearRect(0, 0, starsCanvas.width, starsCanvas.height);
-            }
-        }
-
-        // Emojis flutuantes
-        function floatEmojis(emojis = ['🔥','🚀','👑','⚡','✨'], count = 8) {
-            for (let i = 0; i < count; i++) {
-                setTimeout(() => {
-                    const el = document.createElement('div');
-                    el.className = 'float-emoji';
-                    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-                    el.style.left = (20 + Math.random() * 60) + 'vw';
-                    el.style.bottom = '20vh';
-                    document.body.appendChild(el);
-                    setTimeout(() => el.remove(), 2300);
-                }, i * 120);
-            }
-        }
-
-        // Partículas de fundo
-        function createParticles() {
-            const container = document.getElementById('particles');
-            for (let i = 0; i < 25; i++) {
-                const p = document.createElement('div');
-                p.className = 'particle';
-                p.style.left = Math.random() * 100 + '%';
-                p.style.animationDuration = (7 + Math.random() * 12) + 's';
-                p.style.animationDelay = Math.random() * 10 + 's';
-                const size = 2 + Math.random() * 4;
-                p.style.width = p.style.height = size + 'px';
-                p.style.background = `rgba(${100 + Math.random()*155}, ${180 + Math.random()*75}, 255, ${0.3 + Math.random()*0.4})`;
-                container.appendChild(p);
-            }
-        }
-        createParticles();
-
-        // Toast
-        function showToast(msg, type = 'success') {
-            const t = document.getElementById('toast');
-            t.textContent = msg;
-            t.className = 'toast ' + type + ' show';
-            setTimeout(() => t.classList.remove('show'), 3000);
-        }
-
-        // Ripple nos botões
-        document.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                const ripple = document.createElement('span');
-                ripple.className = 'ripple';
-                const rect = this.getBoundingClientRect();
-                const size = Math.max(rect.width, rect.height);
-                ripple.style.width = ripple.style.height = size + 'px';
-                ripple.style.left = (e.clientX - rect.left - size/2) + 'px';
-                ripple.style.top = (e.clientY - rect.top - size/2) + 'px';
-                this.appendChild(ripple);
-                setTimeout(() => ripple.remove(), 600);
-            });
-        });
-
-        // ==================== LÓGICA ====================
-        function obterNomeMototaxista() {
-            let nome = localStorage.getItem('mototaxi_nome');
-            if (!nome || nome.trim() === "") {
-                nome = prompt("Digite seu Nome ou Apelido:") || "Motoqueiro Anônimo";
-                localStorage.setItem('mototaxi_nome', nome.trim());
-            }
-            return nome.trim();
-        }
-
-        async function trocarNome() {
-            playClick();
-            try {
-                await supabaseClient.from('fila').delete().eq('nome', nomeMototaxista);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                localStorage.removeItem('mototaxi_nome');
-                location.reload();
-            }
-        }
-
-        const nomeMototaxista = obterNomeMototaxista();
-
-        function falar(texto) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const msg = new SpeechSynthesisUtterance(texto);
-                msg.lang = 'pt-BR';
-                msg.rate = 1.05;
-                msg.pitch = 1.1;
-                window.speechSynthesis.speak(msg);
-            }
-        }
-
-        function vibrar(padrao) {
-            if ('vibrate' in navigator) {
-                try { navigator.vibrate(padrao); } catch(e){}
-            }
-        }
-
-        const PONTO_LAT = -8.442719;
-        const PONTO_LNG = -35.014781;
-        const RAIO_METROS = 50;
-
-        let tempoParado = null;
-        let estaNaFila = false;
-        let avisoGpsFalado = false;
-        let progressInterval = null;
-        let ultimaPosicao = null;
-        let jaCelebrouPrimeiro = false;
-        let countdownBeeps = null;
-
-        function calcularDistancia(lat1, lon1, lat2, lon2) {
-            const R = 6371e3;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
-        }
-
-        function setStatus(classe, texto) {
-            const box = document.getElementById('status-box');
-            box.className = 'status ' + classe + ' pulse';
-            box.innerText = texto;
-            setTimeout(() => box.classList.remove('pulse'), 800);
-        }
-
-        async function verificarSeJaEstaNaFila() {
-            const { data, error } = await supabaseClient
-                .from('fila')
-                .select('nome')
-                .eq('nome', nomeMototaxista);
-            if (!error && data && data.length > 0) {
-                estaNaFila = true;
-                setStatus('na-fila', 'Status: Na Fila! 🔥');
-                startAmbient();
-            }
-        }
-
-        function iniciarGPS() {
-            if (!navigator.geolocation) {
-                document.getElementById('info-gps').innerText = 'Seu navegador não suporta GPS.';
-                setStatus('erro-gps', 'Status: GPS não suportado');
-                falar("Seu navegador não suporta localização GPS.");
-                return;
-            }
-
-            navigator.geolocation.watchPosition((pos) => {
-                avisoGpsFalado = false;
-                const lat = pos.coords.latitude;
-                const lng = pos.coords.longitude;
-                const distancia = calcularDistancia(lat, lng, PONTO_LAT, PONTO_LNG);
-                const info = document.getElementById('info-gps');
-                info.innerHTML = `<div class="radar"></div>Distância do ponto: ${Math.round(distancia)}m`;
-
-                if (distancia <= RAIO_METROS) {
-                    info.className = 'info-gps perto';
-                    if (!estaNaFila && !tempoParado) {
-                        setStatus('aguardando', 'Detectado no ponto! Aguardando 20s...');
-                        playNear();
-                        vibrar([80, 40, 80, 40, 120]);
-                        flashScreen();
-
-                        const progressCont = document.getElementById('progress-container');
-                        const progressBar = document.getElementById('progress-bar');
-                        progressCont.style.display = 'block';
-                        progressBar.style.width = '0%';
-                        let progresso = 0;
-
-                        // Beeps de contagem
-                        countdownBeeps = setInterval(() => playCountdown(), 1000);
-
-                        progressInterval = setInterval(() => {
-                            progresso += 5;
-                            progressBar.style.width = progresso + '%';
-                            if (progresso >= 100) {
-                                clearInterval(progressInterval);
-                                clearInterval(countdownBeeps);
-                            }
-                        }, 1000);
-
-                        tempoParado = setTimeout(() => {
-                            entrarNaFila();
-                            progressCont.style.display = 'none';
-                            clearInterval(countdownBeeps);
-                        }, 20000);
-                    }
-                } else {
-                    info.className = 'info-gps longe';
-                    if (tempoParado) {
-                        clearTimeout(tempoParado);
-                        tempoParado = null;
-                        clearInterval(progressInterval);
-                        clearInterval(countdownBeeps);
-                        document.getElementById('progress-container').style.display = 'none';
-                    }
-                    if (estaNaFila) {
-                        sairDaFila();
-                    } else {
-                        setStatus('fora', 'Status: Fora da fila');
-                    }
-                }
-            }, (err) => {
-                console.error(err);
-                document.getElementById('info-gps').innerHTML = 'GPS desativado ou sem sinal!';
-                document.getElementById('info-gps').className = 'info-gps longe';
-                setStatus('erro-gps', 'Status: GPS Desligado/Sem Sinal!');
-                if (!avisoGpsFalado) {
-                    avisoGpsFalado = true;
-                    vibrar([300, 150, 300, 150, 400]);
-                    playWarning();
-                    falar("Atenção, seu GPS foi desativado ou perdeu o sinal. Ative o GPS.");
-                    showToast('⚠️ GPS perdido! Ative a localização', 'error');
-                    flashScreen();
-                }
-                if (estaNaFila) sairDaFila();
-            }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 8000 });
-        }
-
-        async function entrarNaFila() {
-            const { data: existente } = await supabaseClient
-                .from('fila')
-                .select('nome')
-                .eq('nome', nomeMototaxista);
-            if (existente && existente.length > 0) {
-                estaNaFila = true;
-                setStatus('na-fila', 'Status: Na Fila! 🔥');
-                startAmbient();
-                return;
-            }
-
-            estaNaFila = true;
-            setStatus('na-fila', 'Status: Na Fila! 🔥');
-            
-            // DOPAMINA MÁXIMA
-            playEnter();
-            vibrar([100, 50, 100, 50, 100, 50, 250]);
-            createConfetti(110);
-            floatEmojis(['🚀','🔥','⚡','✨','🏍️'], 10);
-            flashScreen();
-            falar("Você entrou na fila do ponto! Boa sorte!");
-            showToast('🚀 Você entrou na fila!', 'success');
-            startAmbient();
-
-            const { error } = await supabaseClient.from('fila').insert([{ nome: nomeMototaxista }]);
-            if (error) console.error(error);
-            carregarFila();
-        }
-
-        async function sairDaFila() {
-            estaNaFila = false;
-            tempoParado = null;
-            jaCelebrouPrimeiro = false;
-            document.getElementById('minha-posicao').classList.remove('show');
-            document.getElementById('posicao-label').classList.remove('show');
-            stopAmbient();
-
-            setStatus('fora', 'Status: Fora da fila / GPS ausente');
-            playExit();
-            vibrar(450);
-            falar("Você saiu da fila.");
-            showToast('Você saiu da fila', 'warn');
-
-            const { error } = await supabaseClient.from('fila').delete().eq('nome', nomeMototaxista);
-            if (error) console.error(error);
-            carregarFila();
-        }
-
-        async function carregarFila() {
-            const { data, error } = await supabaseClient
-                .from('fila')
-                .select('*')
-                .order('criado_em', { ascending: true });
-
-            const listaUl = document.getElementById('lista-fila');
-            listaUl.innerHTML = '';
-
-            if (error) {
-                listaUl.innerHTML = '<li>Erro ao carregar a fila.</li>';
-                return;
-            }
-            if (!data || data.length === 0) {
-                listaUl.innerHTML = '<li style="justify-content:center;color:#94a3b8;">A fila está vazia 😴</li>';
-                document.getElementById('minha-posicao').classList.remove('show');
-                document.getElementById('posicao-label').classList.remove('show');
-                return;
-            }
-
-            let minhaPos = null;
-            data.forEach((moto, index) => {
-                const li = document.createElement('li');
-                li.style.animationDelay = (index * 0.06) + 's';
-                if (index === 0) li.classList.add('primeiro');
-                if (moto.nome === nomeMototaxista) {
-                    li.classList.add('eu');
-                    minhaPos = index + 1;
-                }
-                const dataChegada = moto.criado_em ? new Date(moto.criado_em) : new Date();
-                const horaFormatada = dataChegada.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                li.innerHTML = `
-                    <div class="moto-info">
-                        <span class="moto-nome">${moto.nome}${moto.nome === nomeMototaxista ? ' (você)' : ''}</span>
-                        <span class="moto-hora">Chegada: ${horaFormatada}</span>
-                    </div>
-                    <span class="moto-posicao">${index + 1}º</span>
-                `;
-                listaUl.appendChild(li);
-            });
-
-            const posEl = document.getElementById('minha-posicao');
-            const labelEl = document.getElementById('posicao-label');
-
-            if (minhaPos !== null) {
-                posEl.textContent = minhaPos + 'º';
-                posEl.classList.add('show');
-                labelEl.classList.add('show');
-
-                if (minhaPos === 1 && !jaCelebrouPrimeiro) {
-                    jaCelebrouPrimeiro = true;
-                    playSuccess();
-                    createConfetti(140);
-                    floatEmojis(['👑','🏆','🔥','⚡','✨','🎉'], 14);
-                    vibrar([200, 80, 200, 80, 200, 80, 400]);
-                    flashScreen();
-                    setTimeout(flashScreen, 200);
-                    falar("Você é o próximo da vez! Prepare-se!");
-                    showToast('👑 VOCÊ É O PRÓXIMO!', 'success');
-                }
-
-                if (ultimaPosicao !== null && minhaPos < ultimaPosicao) {
-                    playLevelUp();
-                    showToast(`🔥 Subiu para ${minhaPos}º lugar!`, 'success');
-                    vibrar([70, 40, 70, 40, 100]);
-                    floatEmojis(['⬆️','🔥'], 4);
-                }
-                ultimaPosicao = minhaPos;
-            } else {
-                posEl.classList.remove('show');
-                labelEl.classList.remove('show');
-                ultimaPosicao = null;
-                jaCelebrouPrimeiro = false;
-            }
-        }
-
-        // ==================== INIT ====================
-        document.body.addEventListener('click', initAudio, { once: true });
-        document.body.addEventListener('touchstart', initAudio, { once: true });
-
-        carregarFila();
-        verificarSeJaEstaNaFila();
-        iniciarGPS();
-
-        supabaseClient
-            .channel('public:fila')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'fila' }, () => carregarFila())
-            .subscribe();
-
-        document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible") {
-                carregarFila();
-                verificarSeJaEstaNaFila();
-            }
-        });
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('SW ok:', reg.scope))
-                    .catch(err => console.error('SW falhou:', err));
-            });
-        }
-
-        let deferredPrompt;
-        const btnInstalar = document.getElementById('btn-instalar');
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            btnInstalar.style.display = 'block';
-        });
-        btnInstalar.addEventListener('click', async () => {
-            playClick();
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                playSuccess();
-                createConfetti(70);
-                showToast('🎉 App instalado com sucesso!', 'success');
-            }
-            deferredPrompt = null;
-            btnInstalar.style.display = 'none';
-        });
-        window.addEventListener('appinstalled', () => {
-            btnInstalar.style.display = 'none';
-            createConfetti(80);
-            floatEmojis(['📲','🎉','✨'], 6);
-        });
-    </script>
-</body>
-</html>
+            setTimeout(() => playT
