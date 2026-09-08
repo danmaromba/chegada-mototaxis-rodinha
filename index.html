@@ -6,9 +6,25 @@
     <meta name="theme-color" content="#004085">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:title" content="Fila do Ponto de Mototáxis">
+    <meta property="og:description" content="Acompanhe em tempo real a fila do ponto de mototáxis. Entre e saia automaticamente pelo GPS.">
+    <meta property="og:site_name" content="Fila do Ponto">
+    <!-- Substitua pela URL real da imagem quando tiver -->
+    <meta property="og:image" content="https://seu-dominio.com/og-image.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    
+    <!-- Twitter Card (opcional, mas recomendado) -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Fila do Ponto de Mototáxis">
+    <meta name="twitter:description" content="Acompanhe em tempo real a fila do ponto de mototáxis. Entre e saia automaticamente pelo GPS.">
+    
     <link rel="manifest" href="manifest.json">
     <title>Fila do Ponto de Mototáxis</title>
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
@@ -59,37 +75,30 @@
     </style>
 </head>
 <body>
-
     <div class="container">
         <h1>Fila do Ponto 🏍️</h1>
         
         <div id="status-box" class="status fora">
             Status: Fora da fila
         </div>
-
         <h2>Próximos da vez:</h2>
         <ul id="lista-fila">
             <li>Carregando fila...</li>
         </ul>
-
         <div class="info-gps" id="info-gps">
             Aguardando sinal do GPS...
         </div>
-
         <button class="btn-trocar" onclick="trocarNome()">Alterar meu nome / apelido</button>
-
         <!-- Botão de instalação do PWA (no lugar correto, dentro do body) -->
         <button id="btn-instalar">
             📲 Instalar App no Celular
         </button>
     </div>
-
     <script>
         const SUPABASE_URL = 'https://etaiheynljzhzvpaqusm.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_DkBXJjtKJCBqjy2aNF8kFg_yKMK0hwg';
         
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
         function obterNomeMototaxista() {
             let nome = localStorage.getItem('mototaxi_nome');
             if (!nome || nome.trim() === "") {
@@ -98,7 +107,6 @@
             }
             return nome.trim();
         }
-
         async function trocarNome() {
             try {
                 await supabaseClient.from('fila').delete().eq('nome', nomeMototaxista);
@@ -109,9 +117,7 @@
                 location.reload();
             }
         }
-
         const nomeMototaxista = obterNomeMototaxista();
-
         function falar(texto) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
@@ -121,7 +127,6 @@
                 window.speechSynthesis.speak(mensagem);
             }
         }
-
         function vibrar(padrao) {
             if ('vibrate' in navigator) {
                 try {
@@ -131,15 +136,12 @@
                 }
             }
         }
-
         const PONTO_LAT = -8.43982699740795; 
         const PONTO_LNG = -35.01837120871769;
         const RAIO_METROS = 50;
-
         let tempoParado = null;
         let estaNaFila = false;
         let avisoGpsFalado = false;
-
         function calcularDistancia(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -150,20 +152,17 @@
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             return R * c;
         }
-
         async function verificarSeJaEstaNaFila() {
             const { data, error } = await supabaseClient
                 .from('fila')
                 .select('nome')
                 .eq('nome', nomeMototaxista);
-
             if (!error && data && data.length > 0) {
                 estaNaFila = true;
                 document.getElementById('status-box').className = 'status na-fila';
                 document.getElementById('status-box').innerText = 'Status: Na Fila!';
             }
         }
-
         function iniciarGPS() {
             if (!navigator.geolocation) {
                 document.getElementById('info-gps').innerText = 'Seu navegador não suporta GPS.';
@@ -172,16 +171,13 @@
                 falar("Seu navegador não suporta localização GPS.");
                 return;
             }
-
             navigator.geolocation.watchPosition((pos) => {
                 avisoGpsFalado = false;
                 
                 const lat = pos.coords.latitude;
                 const lng = pos.coords.longitude;
                 const distancia = calcularDistancia(lat, lng, PONTO_LAT, PONTO_LNG);
-
                 document.getElementById('info-gps').innerText = `Distância do ponto: ${Math.round(distancia)}m`;
-
                 if (distancia <= RAIO_METROS) {
                     if (!estaNaFila && !tempoParado) {
                         document.getElementById('status-box').className = 'status aguardando';
@@ -208,96 +204,76 @@
                 document.getElementById('info-gps').innerText = 'GPS desativado ou sem sinal!';
                 document.getElementById('status-box').className = 'status erro-gps';
                 document.getElementById('status-box').innerText = 'Status: GPS Desligado/Sem Sinal!';
-
                 if (!avisoGpsFalado) {
                     avisoGpsFalado = true;
                     vibrar([400, 200, 400]);
                     falar("Atenção, seu GPS foi desativado ou perdeu o sinal. Ative o GPS.");
                 }
-
                 if (estaNaFila) {
                     sairDaFila();
                 }
             }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 8000 });
         }
-
         async function entrarNaFila() {
             // Checa novamente antes de inserir para evitar duplicidade
             const { data: existente } = await supabaseClient
                 .from('fila')
                 .select('nome')
                 .eq('nome', nomeMototaxista);
-
             if (existente && existente.length > 0) {
                 estaNaFila = true;
                 document.getElementById('status-box').className = 'status na-fila';
                 document.getElementById('status-box').innerText = 'Status: Na Fila!';
                 return;
             }
-
             estaNaFila = true;
             document.getElementById('status-box').className = 'status na-fila';
             document.getElementById('status-box').innerText = 'Status: Na Fila!';
-
             vibrar([300, 100, 300]);
             falar("Você entrou na fila do ponto.");
-
             const { error } = await supabaseClient.from('fila').insert([
                 { nome: nomeMototaxista }
             ]);
-
             if (error) {
                 console.error('Erro ao inserir:', error);
             }
-
             carregarFila();
         }
-
         async function sairDaFila() {
             estaNaFila = false;
             tempoParado = null;
             document.getElementById('status-box').className = 'status fora';
             document.getElementById('status-box').innerText = 'Status: Fora da fila / GPS ausente';
-
             vibrar(500);
             falar("Você saiu da fila.");
-
             const { error } = await supabaseClient.from('fila').delete().eq('nome', nomeMototaxista);
             
             if (error) {
                 console.error('Erro ao deletar:', error);
             }
-
             carregarFila();
         }
-
         async function carregarFila() {
             const { data, error } = await supabaseClient
                 .from('fila')
                 .select('*')
                 .order('criado_em', { ascending: true });
-
             const listaUl = document.getElementById('lista-fila');
             listaUl.innerHTML = '';
-
             if (error) {
                 console.error('Erro ao buscar fila:', error);
                 listaUl.innerHTML = '<li>Erro ao carregar a fila do banco.</li>';
                 return;
             }
-
             if (!data || data.length === 0) {
                 listaUl.innerHTML = '<li>A fila está vazia.</li>';
                 return;
             }
-
             data.forEach((moto, index) => {
                 const li = document.createElement('li');
                 if (index === 0) li.classList.add('primeiro');
-
                 const dataChegada = moto.criado_em ? new Date(moto.criado_em) : new Date();
                 const horaFormatada = dataChegada.toLocaleTimeString('pt-BR');
-
                 li.innerHTML = `
                     <div class="moto-info">
                         <span class="moto-nome">${moto.nome}</span>
@@ -308,7 +284,6 @@
                 listaUl.appendChild(li);
             });
         }
-
         // ========== INICIALIZAÇÃO ==========
         carregarFila();
         verificarSeJaEstaNaFila();
@@ -321,7 +296,6 @@
                 carregarFila();
             })
             .subscribe();
-
         // Garante atualização quando o app volta do segundo plano
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
@@ -329,7 +303,6 @@
                 verificarSeJaEstaNaFila();
             }
         });
-
         // ========== SERVICE WORKER (PWA) ==========
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -342,17 +315,14 @@
                     });
             });
         }
-
         // ========== INSTALAÇÃO DO PWA ==========
         let deferredPrompt;
         const btnInstalar = document.getElementById('btn-instalar');
-
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
             btnInstalar.style.display = 'block';
         });
-
         btnInstalar.addEventListener('click', async () => {
             if (!deferredPrompt) return;
             deferredPrompt.prompt();
@@ -363,7 +333,6 @@
             deferredPrompt = null;
             btnInstalar.style.display = 'none';
         });
-
         window.addEventListener('appinstalled', () => {
             console.log('Aplicativo instalado com sucesso!');
             btnInstalar.style.display = 'none';
