@@ -846,6 +846,9 @@
         let ultimaPosicao = null;
         let jaCelebrouPrimeiro = false;
         let countdownBeeps = null;
+        let gpsGraceTimeout = null;          // tolerância de perda de GPS
+        const GPS_GRACE_MS = 10000;          // 10 segundos de tolerância
+        let ultimoGpsOk = Date.now();
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
@@ -887,6 +890,12 @@
 
             navigator.geolocation.watchPosition((pos) => {
                 avisoGpsFalado = false;
+                ultimoGpsOk = Date.now();
+                // GPS voltou — cancela qualquer timeout de graça
+                if (gpsGraceTimeout) {
+                    clearTimeout(gpsGraceTimeout);
+                    gpsGraceTimeout = null;
+                }
                 const lat = pos.coords.latitude;
                 const lng = pos.coords.longitude;
                 const distancia = calcularDistancia(lat, lng, PONTO_LAT, PONTO_LNG);
@@ -895,7 +904,10 @@
 
                 if (distancia <= RAIO_METROS) {
                     info.className = 'info-gps perto';
-                    if (!estaNaFila && !tempoParado) {
+                    if (estaNaFila) {
+                        // Já está na fila e voltou para o ponto — garante status correto
+                        setStatus('na-fila', 'Status: Na Fila! 🔥');
+                    } else if (!tempoParado) {
                         setStatus('aguardando', 'Detectado no ponto! Aguardando 20s...');
                         playNear();
                         vibrar([80, 40, 80, 40, 120]);
@@ -935,7 +947,15 @@
                         document.getElementById('progress-container').style.display = 'none';
                     }
                     if (estaNaFila) {
-                        sairDaFila();
+                        // Longe do ponto: inicia contagem de graça (não sai imediatamente)
+                        if (!gpsGraceTimeout) {
+                            setStatus('aguardando', 'Longe do ponto... saindo em 10s se não voltar');
+                            showToast('⚠️ Longe do ponto. 10s de tolerância', 'warn');
+                            gpsGraceTimeout = setTimeout(() => {
+                                gpsGraceTimeout = null;
+                                if (estaNaFila) sairDaFila();
+                            }, GPS_GRACE_MS);
+                        }
                     } else {
                         setStatus('fora', 'Status: Fora da fila');
                     }
@@ -953,7 +973,17 @@
                     showToast('⚠️ GPS perdido! Ative a localização', 'error');
                     flashScreen();
                 }
-                if (estaNaFila) sairDaFila();
+                // Perda de sinal: só remove da fila após 10 segundos de graça
+                if (estaNaFila && !gpsGraceTimeout) {
+                    setStatus('aguardando', 'GPS perdido... mantendo na fila por 10s');
+                    gpsGraceTimeout = setTimeout(() => {
+                        gpsGraceTimeout = null;
+                        if (estaNaFila) {
+                            // Só sai se o GPS ainda estiver ruim
+                            sairDaFila();
+                        }
+                    }, GPS_GRACE_MS);
+                }
             }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 8000 });
         }
 
@@ -991,6 +1021,10 @@
             estaNaFila = false;
             tempoParado = null;
             jaCelebrouPrimeiro = false;
+            if (gpsGraceTimeout) {
+                clearTimeout(gpsGraceTimeout);
+                gpsGraceTimeout = null;
+            }
             document.getElementById('minha-posicao').classList.remove('show');
             document.getElementById('posicao-label').classList.remove('show');
             stopAmbient();
@@ -1039,7 +1073,7 @@
                 const horaFormatada = dataChegada.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                 li.innerHTML = `
                     <div class="moto-info">
-                        <span class="moto-nome">\( {moto.nome} \){moto.nome === nomeMototaxista ? ' (você)' : ''}</span>
+                        <span class="moto-nome">${moto.nome}${moto.nome === nomeMototaxista ? ' (você)' : ''}</span>
                         <span class="moto-hora">Chegada: ${horaFormatada}</span>
                     </div>
                     <span class="moto-posicao">${index + 1}º</span>
