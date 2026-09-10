@@ -884,7 +884,7 @@
                     if (estaNaFila) {
                         setStatus('na-fila', 'Status: Na Fila! 🔥');
                     } else if (!tempoParado) {
-                        setStatus('aguardando', 'Detectado no ponto! Aguardando 20s...');
+                        setStatus('aguardando', 'Detectado no ponto! Aguardando 5s...');
                         playNear();
                         vibrar([80, 40, 80, 40, 120]);
                         flashScreen();
@@ -898,7 +898,7 @@
                         countdownBeeps = setInterval(() => playCountdown(), 1000);
 
                         progressInterval = setInterval(() => {
-                            progresso += 5;
+                            progresso += 20;
                             progressBar.style.width = progresso + '%';
                             if (progresso >= 100) {
                                 clearInterval(progressInterval);
@@ -910,7 +910,7 @@
                             entrarNaFila();
                             progressCont.style.display = 'none';
                             clearInterval(countdownBeeps);
-                        }, 20000);
+                        }, 5000);
                     }
                 } else {
                     info.className = 'info-gps longe';
