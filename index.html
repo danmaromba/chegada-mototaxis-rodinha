@@ -55,7 +55,6 @@
             100% { background-position: 0% 50%; }
         }
 
-        /* Flash de tela */
         .screen-flash {
             position: fixed;
             inset: 0;
@@ -69,7 +68,6 @@
             opacity: 0.35;
         }
 
-        /* Partículas */
         .particles {
             position: fixed;
             top: 0; left: 0;
@@ -134,7 +132,6 @@
             margin-bottom: 20px;
         }
 
-        /* STATUS */
         .status {
             text-align: center;
             padding: 18px 16px;
@@ -202,7 +199,6 @@
             75% { transform: translateX(-3px); }
         }
 
-        /* Posição */
         .minha-posicao {
             text-align: center;
             font-size: 48px;
@@ -234,7 +230,6 @@
         }
         .posicao-label.show { display: block; }
 
-        /* Progresso */
         .progress-container {
             height: 8px;
             background: rgba(255,255,255,0.08);
@@ -356,7 +351,6 @@
         }
         .info-gps.longe { color: #f87171; }
 
-        /* Radar visual */
         .radar {
             position: absolute;
             width: 40px; height: 40px;
@@ -409,7 +403,6 @@
         }
         #btn-instalar:active { transform: scale(0.95); }
 
-        /* Ripple nos botões */
         .ripple {
             position: absolute;
             border-radius: 50%;
@@ -456,7 +449,6 @@
         .toast.warn { border-color: #fbbf24; }
         .toast.error { border-color: #f87171; }
 
-        /* Emojis flutuantes */
         .float-emoji {
             position: fixed;
             font-size: 28px;
@@ -559,8 +551,7 @@
             noise.start();
         }
 
-        // Sons específicos
-        function playSuccess() { // Fanfarra de vitória
+        function playSuccess() {
             initAudio();
             const notes = [523.25, 659.25, 783.99, 1046.50];
             notes.forEach((n, i) => setTimeout(() => playTone(n, 0.22, 'sine', 0.13), i * 90));
@@ -618,7 +609,6 @@
             setTimeout(() => playTone(783.99, 0.18, 'sine', 0.1), 140);
         }
 
-        // Ambiente enquanto está na fila
         function startAmbient() {
             initAudio();
             if (ambientOsc) return;
@@ -648,7 +638,6 @@
             setTimeout(() => flashEl.classList.remove('active'), 120);
         }
 
-        // Confetti + Stars
         const canvas = document.getElementById('confetti');
         const ctx = canvas.getContext('2d');
         const starsCanvas = document.getElementById('stars');
@@ -680,7 +669,6 @@
                     opacity: 1
                 });
             }
-            // Estrelas
             starPieces = [];
             for (let i = 0; i < 40; i++) {
                 starPieces.push({
@@ -739,7 +727,6 @@
             }
         }
 
-        // Emojis flutuantes
         function floatEmojis(emojis = ['🔥','🚀','👑','⚡','✨'], count = 8) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
@@ -754,7 +741,6 @@
             }
         }
 
-        // Partículas de fundo
         function createParticles() {
             const container = document.getElementById('particles');
             for (let i = 0; i < 25; i++) {
@@ -771,7 +757,6 @@
         }
         createParticles();
 
-        // Toast
         function showToast(msg, type = 'success') {
             const t = document.getElementById('toast');
             t.textContent = msg;
@@ -779,7 +764,6 @@
             setTimeout(() => t.classList.remove('show'), 3000);
         }
 
-        // Ripple nos botões
         document.querySelectorAll('button').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 const ripple = document.createElement('span');
@@ -846,8 +830,6 @@
         let ultimaPosicao = null;
         let jaCelebrouPrimeiro = false;
         let countdownBeeps = null;
-        let gpsGraceTimeout = null;          // tolerância de perda de GPS
-        const GPS_GRACE_MS = 10000;          // 10 segundos de tolerância
         let ultimoGpsOk = Date.now();
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
@@ -891,11 +873,6 @@
             navigator.geolocation.watchPosition((pos) => {
                 avisoGpsFalado = false;
                 ultimoGpsOk = Date.now();
-                // GPS voltou — cancela qualquer timeout de graça
-                if (gpsGraceTimeout) {
-                    clearTimeout(gpsGraceTimeout);
-                    gpsGraceTimeout = null;
-                }
                 const lat = pos.coords.latitude;
                 const lng = pos.coords.longitude;
                 const distancia = calcularDistancia(lat, lng, PONTO_LAT, PONTO_LNG);
@@ -905,7 +882,6 @@
                 if (distancia <= RAIO_METROS) {
                     info.className = 'info-gps perto';
                     if (estaNaFila) {
-                        // Já está na fila e voltou para o ponto — garante status correto
                         setStatus('na-fila', 'Status: Na Fila! 🔥');
                     } else if (!tempoParado) {
                         setStatus('aguardando', 'Detectado no ponto! Aguardando 20s...');
@@ -919,7 +895,6 @@
                         progressBar.style.width = '0%';
                         let progresso = 0;
 
-                        // Beeps de contagem
                         countdownBeeps = setInterval(() => playCountdown(), 1000);
 
                         progressInterval = setInterval(() => {
@@ -947,15 +922,8 @@
                         document.getElementById('progress-container').style.display = 'none';
                     }
                     if (estaNaFila) {
-                        // Longe do ponto: inicia contagem de graça (não sai imediatamente)
-                        if (!gpsGraceTimeout) {
-                            setStatus('aguardando', 'Longe do ponto... saindo em 10s se não voltar');
-                            showToast('⚠️ Longe do ponto. 10s de tolerância', 'warn');
-                            gpsGraceTimeout = setTimeout(() => {
-                                gpsGraceTimeout = null;
-                                if (estaNaFila) sairDaFila();
-                            }, GPS_GRACE_MS);
-                        }
+                        // Sai da fila IMEDIATAMENTE
+                        sairDaFila();
                     } else {
                         setStatus('fora', 'Status: Fora da fila');
                     }
@@ -973,16 +941,9 @@
                     showToast('⚠️ GPS perdido! Ative a localização', 'error');
                     flashScreen();
                 }
-                // Perda de sinal: só remove da fila após 10 segundos de graça
-                if (estaNaFila && !gpsGraceTimeout) {
-                    setStatus('aguardando', 'GPS perdido... mantendo na fila por 10s');
-                    gpsGraceTimeout = setTimeout(() => {
-                        gpsGraceTimeout = null;
-                        if (estaNaFila) {
-                            // Só sai se o GPS ainda estiver ruim
-                            sairDaFila();
-                        }
-                    }, GPS_GRACE_MS);
+                // Perda de GPS → sai da fila IMEDIATAMENTE
+                if (estaNaFila) {
+                    sairDaFila();
                 }
             }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 8000 });
         }
@@ -1002,7 +963,6 @@
             estaNaFila = true;
             setStatus('na-fila', 'Status: Na Fila! 🔥');
             
-            // DOPAMINA MÁXIMA
             playEnter();
             vibrar([100, 50, 100, 50, 100, 50, 250]);
             createConfetti(110);
@@ -1021,10 +981,6 @@
             estaNaFila = false;
             tempoParado = null;
             jaCelebrouPrimeiro = false;
-            if (gpsGraceTimeout) {
-                clearTimeout(gpsGraceTimeout);
-                gpsGraceTimeout = null;
-            }
             document.getElementById('minha-posicao').classList.remove('show');
             document.getElementById('posicao-label').classList.remove('show');
             stopAmbient();
@@ -1073,7 +1029,7 @@
                 const horaFormatada = dataChegada.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                 li.innerHTML = `
                     <div class="moto-info">
-                        <span class="moto-nome">${moto.nome}${moto.nome === nomeMototaxista ? ' (você)' : ''}</span>
+                        <span class="moto-nome">\( {moto.nome} \){moto.nome === nomeMototaxista ? ' (você)' : ''}</span>
                         <span class="moto-hora">Chegada: ${horaFormatada}</span>
                     </div>
                     <span class="moto-posicao">${index + 1}º</span>
