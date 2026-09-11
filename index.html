@@ -922,7 +922,6 @@
                         document.getElementById('progress-container').style.display = 'none';
                     }
                     if (estaNaFila) {
-                        // Sai da fila IMEDIATAMENTE
                         sairDaFila();
                     } else {
                         setStatus('fora', 'Status: Fora da fila');
@@ -941,7 +940,6 @@
                     showToast('⚠️ GPS perdido! Ative a localização', 'error');
                     flashScreen();
                 }
-                // Perda de GPS → sai da fila IMEDIATAMENTE
                 if (estaNaFila) {
                     sairDaFila();
                 }
