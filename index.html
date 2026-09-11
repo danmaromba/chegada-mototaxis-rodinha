@@ -1025,6 +1025,8 @@
                 }
                 const dataChegada = moto.criado_em ? new Date(moto.criado_em) : new Date();
                 const horaFormatada = dataChegada.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                
+                // ===== LINHA CORRIGIDA =====
                 li.innerHTML = `
                     <div class="moto-info">
                         <span class="moto-nome">\( {moto.nome} \){moto.nome === nomeMototaxista ? ' (você)' : ''}</span>
