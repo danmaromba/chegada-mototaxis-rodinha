@@ -822,10 +822,10 @@
         const PONTO_LAT = -8.442719; 
         const PONTO_LNG = -35.014781;
         const RAIO_METROS = 50;
-        const TEMPO_TOLERANCIA_SAIDA_MS = 15000; // 15 segundos de tolerância para oscilação de sinal
+        const TEMPO_TOLERANCIA_SAIDA_MS = 15000; // 15 segundos de tolerância
 
         let tempoParado = null;
-        let timerSaida = null; // Timer de tolerância para perda de sinal
+        let timerSaida = null; 
         let estaNaFila = false;
         let avisoGpsFalado = false;
         let progressInterval = null;
@@ -881,15 +881,16 @@
                 const info = document.getElementById('info-gps');
                 info.innerHTML = `<div class="radar"></div>Distância do ponto: ${Math.round(distancia)}m`;
 
-                // Se o sinal voltou e havia um timer de saída rodando, cancelamos a saída
-                if (timerSaida) {
-                    clearTimeout(timerSaida);
-                    timerSaida = null;
-                    showToast('🔄 Sinal recuperado a tempo!', 'success');
-                }
-
                 if (distancia <= RAIO_METROS) {
                     info.className = 'info-gps perto';
+                    
+                    // Se o usuário voltou para perto, cancela qualquer timer de saída pendente
+                    if (timerSaida) {
+                        clearTimeout(timerSaida);
+                        timerSaida = null;
+                        showToast('🔄 Sinal recuperado a tempo!', 'success');
+                    }
+
                     if (estaNaFila) {
                         setStatus('na-fila', 'Status: Na Fila! 🔥');
                     } else if (!tempoParado) {
@@ -923,6 +924,7 @@
                     }
                 } else {
                     info.className = 'info-gps longe';
+                    
                     if (tempoParado) {
                         clearTimeout(tempoParado);
                         tempoParado = null;
@@ -931,15 +933,17 @@
                         document.getElementById('progress-container').style.display = 'none';
                     }
                     
+                    // Se está na fila e saiu do raio, arma o timer de 15s para remoção
                     if (estaNaFila && !timerSaida) {
-                        setStatus('aguardando', 'Sinal instável... Verificando saída (15s)');
-                        showToast('⚠️ Sinal fraco, aguardando reconexão...', 'warn');
+                        setStatus('aguardando', 'Fora do raio! Saindo em 15s...');
+                        showToast('⚠️ Você saiu do raio! Retirada em 15s...', 'warn');
                         
-                        timerSaida = setTimeout(() => {
-                            sairDaFila();
+                        timerSaida = setTimeout(async () => {
+                            if (!estaNaFila) return;
+                            await sairDaFila();
                             timerSaida = null;
                         }, TEMPO_TOLERANCIA_SAIDA_MS);
-                    } else if (!estaNaFila) {
+                    } else if (!estaNaFila && !timerSaida) {
                         setStatus('fora', 'Status: Fora da fila');
                     }
                 }
@@ -959,8 +963,10 @@
                 }
 
                 if (estaNaFila && !timerSaida) {
-                    timerSaida = setTimeout(() => {
-                        sairDaFila();
+                    setStatus('aguardando', 'Sem sinal GPS! Saindo em 15s...');
+                    timerSaida = setTimeout(async () => {
+                        if (!estaNaFila) return;
+                        await sairDaFila();
                         timerSaida = null;
                     }, TEMPO_TOLERANCIA_SAIDA_MS);
                 }
