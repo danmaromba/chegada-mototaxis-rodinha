@@ -1039,10 +1039,12 @@
                 const dataChegada = moto.criado_em ? new Date(moto.criado_em) : new Date();
                 const horaFormatada = dataChegada.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                 
-                // ===== LINHA CORRIGIDA =====
+                // ===== TRECHO CORRIGIDO =====
+                const textoVoce = moto.nome === nomeMototaxista ? ' (você)' : '';
+                
                 li.innerHTML = `
                     <div class="moto-info">
-                        <span class="moto-nome">${moto.nome}${moto.nome === nomeMototaxista ? ' (você)' : ''}</span>
+                        <span class="moto-nome">${moto.nome}${textoVoce}</span>
                         <span class="moto-hora">Chegada: ${horaFormatada}</span>
                     </div>
                     <span class="moto-posicao">${index + 1}º</span>
