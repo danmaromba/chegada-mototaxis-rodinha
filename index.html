@@ -939,9 +939,7 @@
                         showToast('⚠️ Você saiu do raio! Retirada em 15s...', 'warn');
                         
                         timerSaida = setTimeout(async () => {
-                            if (!estaNaFila) return;
                             await sairDaFila();
-                            timerSaida = null;
                         }, TEMPO_TOLERANCIA_SAIDA_MS);
                     } else if (!estaNaFila && !timerSaida) {
                         setStatus('fora', 'Status: Fora da fila');
@@ -965,9 +963,7 @@
                 if (estaNaFila && !timerSaida) {
                     setStatus('aguardando', 'Sem sinal GPS! Saindo em 15s...');
                     timerSaida = setTimeout(async () => {
-                        if (!estaNaFila) return;
                         await sairDaFila();
-                        timerSaida = null;
                     }, TEMPO_TOLERANCIA_SAIDA_MS);
                 }
             }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 8000 });
@@ -1003,7 +999,7 @@
         }
 
         async function sairDaFila() {
-            estaNaFila = false;
+            // Limpa todos os timers ativos de entrada/progresso
             if (tempoParado) {
                 clearTimeout(tempoParado);
                 tempoParado = null;
@@ -1029,9 +1025,19 @@
             falar("Você saiu da fila.");
             showToast('Você saiu da fila', 'warn');
 
-            const { error } = await supabaseClient.from('fila').delete().eq('nome', nomeMototaxista);
-            if (error) console.error(error);
-            carregarFila();
+            // Executa a remoção no Supabase e só depois atualiza as flags de controle
+            const { error } = await supabaseClient
+                .from('fila')
+                .delete()
+                .eq('nome', nomeMototaxista);
+
+            if (error) {
+                console.error("Erro ao sair da fila:", error);
+            } else {
+                estaNaFila = false;
+                timerSaida = null;
+                carregarFila();
+            }
         }
 
         async function carregarFila() {
