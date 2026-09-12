@@ -3,58 +3,782 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#004085">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:title" content="Fila do Ponto de Mototáxis da Rodinha">
+    <meta property="og:description" content="Acompanhe em tempo real a fila do ponto de Mototáxis da Rodinha. Entre e saia automaticamente pelo GPS.">
+    <meta property="og:site_name" content="Fila do Ponto Rodinha">
+    <meta property="og:image" content="https://etaiheynljzhzvpaqusm.supabase.co/storage/v1/object/public/product-images/botao.png">
+    <meta property="og:image:width" content="500">
+    <meta property="og:image:height" content="500">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Fila do Ponto de Mototáxis">
+    <meta name="twitter:description" content="Acompanhe em tempo real a fila do ponto de mototáxis. Entre e saia automaticamente pelo GPS.">
+    
+    <link rel="manifest" href="manifest.json">
     <title>Fila do Ponto de Mototáxis</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
-        body { background-color: #f4f6f9; color: #333; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h1 { text-align: center; font-size: 22px; margin-bottom: 10px; color: #2c3e50; }
-        .status { text-align: center; padding: 10px; border-radius: 8px; font-weight: bold; margin-bottom: 20px; }
-        .status.na-fila { background-color: #d4edda; color: #155724; }
-        .status.fora { background-color: #f8d7da; color: #721c24; }
-        .status.aguardando { background-color: #fff3cd; color: #856404; }
-        .status.erro-gps { background-color: #fce8e6; color: #c5221f; border: 1px dashed #c5221f; }
-        h2 { font-size: 16px; margin-bottom: 10px; color: #555; }
+        :root {
+            --primary: #004085;
+            --success: #00c853;
+            --warning: #ffab00;
+            --danger: #ff1744;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+
+        body {
+            background: linear-gradient(-45deg, #0f172a, #1e3a5f, #0f172a, #1e1b4b);
+            background-size: 400% 400%;
+            animation: gradientBG 18s ease infinite;
+            color: var(--text);
+            min-height: 100vh;
+            padding: 16px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .screen-flash {
+            position: fixed;
+            inset: 0;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9998;
+            transition: opacity 0.15s;
+        }
+        .screen-flash.active {
+            opacity: 0.35;
+        }
+
+        .particles {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            animation: float linear infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(100vh) scale(0) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.7; }
+            90% { opacity: 0.7; }
+            100% { transform: translateY(-20vh) scale(1) rotate(360deg); opacity: 0; }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 480px;
+            margin: 0 auto;
+            background: rgba(30, 41, 59, 0.88);
+            backdrop-filter: blur(18px);
+            padding: 24px;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.55),
+                        0 0 0 1px rgba(255,255,255,0.06),
+                        inset 0 1px 0 rgba(255,255,255,0.12);
+            animation: containerIn 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes containerIn {
+            from { opacity: 0; transform: translateY(40px) scale(0.94); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 26px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #38bdf8);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shineText 4s linear infinite;
+            letter-spacing: -0.5px;
+        }
+
+        @keyframes shineText {
+            to { background-position: 200% center; }
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 20px;
+        }
+
+        .status {
+            text-align: center;
+            padding: 18px 16px;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 17px;
+            margin-bottom: 18px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+        }
+
+        .status::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transform: translateX(-120%);
+        }
+        .status.pulse::before {
+            animation: shine 1.1s ease-out;
+        }
+        @keyframes shine {
+            to { transform: translateX(120%); }
+        }
+
+        .status.fora {
+            background: linear-gradient(135deg, #7f1d1d, #991b1b);
+            color: #fecaca;
+            border: 1px solid #f87171;
+        }
+        .status.aguardando {
+            background: linear-gradient(135deg, #78350f, #92400e);
+            color: #fef3c7;
+            border: 1px solid #fbbf24;
+            animation: pulseWarn 1.4s infinite;
+        }
+        @keyframes pulseWarn {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.5); }
+            50% { box-shadow: 0 0 0 14px rgba(251, 191, 36, 0); }
+        }
+        .status.na-fila {
+            background: linear-gradient(135deg, #065f46, #047857);
+            color: #a7f3d0;
+            border: 1px solid #34d399;
+            animation: successGlow 1.8s infinite;
+        }
+        @keyframes successGlow {
+            0%, 100% { box-shadow: 0 0 18px rgba(52, 211, 153, 0.35); }
+            50% { box-shadow: 0 0 40px rgba(52, 211, 153, 0.7); }
+        }
+        .status.erro-gps {
+            background: linear-gradient(135deg, #7f1d1d, #450a0a);
+            color: #fecaca;
+            border: 1px dashed #f87171;
+            animation: shake 0.55s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            15% { transform: translateX(-8px); }
+            30% { transform: translateX(8px); }
+            45% { transform: translateX(-6px); }
+            60% { transform: translateX(6px); }
+            75% { transform: translateX(-3px); }
+        }
+
+        .minha-posicao {
+            text-align: center;
+            font-size: 48px;
+            font-weight: 900;
+            margin: 6px 0 2px;
+            background: linear-gradient(90deg, #38bdf8, #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: none;
+            text-shadow: 0 0 30px rgba(56, 189, 248, 0.4);
+        }
+        .minha-posicao.show {
+            display: block;
+            animation: popIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.3) rotate(-8deg); opacity: 0; }
+            70% { transform: scale(1.2) rotate(3deg); }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
+        .posicao-label {
+            text-align: center;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 14px;
+            display: none;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .posicao-label.show { display: block; }
+
+        .progress-container {
+            height: 8px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 20px;
+            margin: 12px 0 6px;
+            overflow: hidden;
+            display: none;
+            position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #fbbf24, #f59e0b, #ef4444);
+            border-radius: 20px;
+            transition: width 0.1s linear;
+            box-shadow: 0 0 16px #fbbf24;
+            position: relative;
+        }
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 30px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5));
+            animation: progressShine 1s infinite;
+        }
+        @keyframes progressShine {
+            0% { opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { opacity: 0.3; }
+        }
+
+        h2 {
+            font-size: 15px;
+            margin-bottom: 12px;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        h2::before { content: '🏍️'; font-size: 18px; }
+
         ul { list-style: none; }
-        li { background: #e9ecef; padding: 10px 15px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
-        li.primeiro { background: #cce5ff; border-left: 5px solid #004085; font-weight: bold; }
-        .moto-info { display: flex; flex-direction: column; }
-        .moto-nome { font-size: 15px; font-weight: bold; color: #2c3e50; }
-        .moto-hora { font-size: 12px; color: #666; margin-top: 2px; }
-        .moto-posicao { font-size: 16px; font-weight: bold; color: #004085; }
-        .info-gps { font-size: 12px; color: #666; text-align: center; margin-top: 15px; }
-        .btn-trocar { display: block; width: 100%; margin-top: 15px; padding: 8px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; }
-        .btn-trocar:hover { background: #5a6268; }
+
+        li {
+            background: rgba(51, 65, 85, 0.55);
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            border-radius: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: itemIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+        }
+        @keyframes itemIn {
+            from { opacity: 0; transform: translateX(-24px) scale(0.96); }
+            to { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        li:hover {
+            transform: translateY(-3px);
+            background: rgba(71, 85, 105, 0.7);
+        }
+        li.primeiro {
+            background: linear-gradient(135deg, rgba(0, 100, 200, 0.45), rgba(0, 60, 150, 0.55));
+            border: 1px solid #38bdf8;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        li.primeiro::after {
+            content: '👑';
+            position: absolute;
+            right: 48px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 22px;
+            animation: bounce 1.4s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(-50%) scale(1); }
+            50% { transform: translateY(-65%) scale(1.2); }
+        }
+        li.eu {
+            border: 2px solid #34d399;
+            box-shadow: 0 0 18px rgba(52, 211, 153, 0.4);
+            background: rgba(6, 95, 70, 0.35);
+        }
+
+        .moto-info { display: flex; flex-direction: column; gap: 2px; }
+        .moto-nome { font-size: 15px; font-weight: 700; color: #e2e8f0; }
+        .moto-hora { font-size: 12px; color: var(--muted); }
+        .moto-posicao {
+            font-size: 20px;
+            font-weight: 900;
+            color: #38bdf8;
+            min-width: 36px;
+            text-align: right;
+        }
+
+        .info-gps {
+            font-size: 13px;
+            color: var(--muted);
+            text-align: center;
+            margin: 18px 0 8px;
+            padding: 10px;
+            background: rgba(0,0,0,0.25);
+            border-radius: 12px;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .info-gps.perto { 
+            color: #34d399; 
+            font-weight: 600;
+            box-shadow: 0 0 15px rgba(52, 211, 153, 0.2);
+        }
+        .info-gps.longe { color: #f87171; }
+
+        .radar {
+            position: absolute;
+            width: 40px; height: 40px;
+            border: 2px solid rgba(52, 211, 153, 0.4);
+            border-radius: 50%;
+            left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            opacity: 0;
+        }
+        .info-gps.perto .radar {
+            opacity: 1;
+            animation: radarPulse 2s infinite;
+        }
+        @keyframes radarPulse {
+            0% { width: 20px; height: 20px; opacity: 0.8; }
+            100% { width: 80px; height: 80px; opacity: 0; }
+        }
+
+        .btn-trocar, #btn-instalar {
+            display: block;
+            width: 100%;
+            margin-top: 12px;
+            padding: 14px;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 700;
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-trocar {
+            background: linear-gradient(135deg, #475569, #334155);
+            color: #e2e8f0;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+        }
+        .btn-trocar:active { transform: scale(0.95); }
+        #btn-instalar {
+            display: none;
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: white;
+            box-shadow: 0 4px 22px rgba(16, 185, 129, 0.45);
+            animation: pulseInstall 2s infinite;
+        }
+        @keyframes pulseInstall {
+            0%, 100% { box-shadow: 0 4px 22px rgba(16, 185, 129, 0.4); }
+            50% { box-shadow: 0 4px 35px rgba(16, 185, 129, 0.75); }
+        }
+        #btn-instalar:active { transform: scale(0.95); }
+
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.35);
+            transform: scale(0);
+            animation: rippleAnim 0.6s linear;
+            pointer-events: none;
+        }
+        @keyframes rippleAnim {
+            to { transform: scale(4); opacity: 0; }
+        }
+
+        #confetti, #stars {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%) translateY(120px);
+            background: rgba(15, 23, 42, 0.96);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+            z-index: 10000;
+            opacity: 0;
+            transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(8px);
+        }
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        .toast.success { border-color: #34d399; box-shadow: 0 0 20px rgba(52, 211, 153, 0.3); }
+        .toast.warn { border-color: #fbbf24; }
+        .toast.error { border-color: #f87171; }
+
+        .float-emoji {
+            position: fixed;
+            font-size: 28px;
+            pointer-events: none;
+            z-index: 9997;
+            animation: floatEmoji 2.2s forwards;
+        }
+        @keyframes floatEmoji {
+            0% { transform: translateY(0) scale(0.5); opacity: 0; }
+            20% { opacity: 1; transform: scale(1.3); }
+            100% { transform: translateY(-180px) scale(0.8); opacity: 0; }
+        }
     </style>
 </head>
 <body>
+    <div class="screen-flash" id="flash"></div>
+    <div class="particles" id="particles"></div>
+    <canvas id="confetti"></canvas>
+    <canvas id="stars"></canvas>
+    <div class="toast" id="toast"></div>
 
     <div class="container">
         <h1>Fila do Ponto 🏍️</h1>
+        <p class="subtitle">Rodinha • Tempo real via GPS</p>
         
         <div id="status-box" class="status fora">
             Status: Fora da fila
         </div>
 
-        <h2>Próximos da vez:</h2>
+        <div class="minha-posicao" id="minha-posicao">—</div>
+        <div class="posicao-label" id="posicao-label">sua posição</div>
+
+        <div class="progress-container" id="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+
+        <h2>Próximos da vez</h2>
         <ul id="lista-fila">
             <li>Carregando fila...</li>
         </ul>
 
         <div class="info-gps" id="info-gps">
+            <div class="radar"></div>
             Aguardando sinal do GPS...
         </div>
 
         <button class="btn-trocar" onclick="trocarNome()">Alterar meu nome / apelido</button>
+        <button id="btn-instalar">📲 Instalar App no Celular</button>
     </div>
 
     <script>
         const SUPABASE_URL = 'https://etaiheynljzhzvpaqusm.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_DkBXJjtKJCBqjy2aNF8kFg_yKMK0hwg';
-        
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // ==================== ÁUDIO AVANÇADO ====================
+        let audioCtx = null;
+        let ambientOsc = null;
+        let ambientGain = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playTone(freq, duration, type = 'sine', volume = 0.12, detune = 0) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = type;
+            osc.frequency.value = freq;
+            osc.detune.value = detune;
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playNoise(duration, volume = 0.08) {
+            if (!audioCtx) return;
+            const bufferSize = audioCtx.sampleRate * duration;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = audioCtx.createBufferSource();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 1200;
+            noise.buffer = buffer;
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            noise.start();
+        }
+
+        function playSuccess() {
+            initAudio();
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((n, i) => setTimeout(() => playTone(n, 0.22, 'sine', 0.13), i * 90));
+            setTimeout(() => playTone(1318.51, 0.4, 'triangle', 0.1), 380);
+        }
+
+        function playEnter() {
+            initAudio();
+            playTone(392, 0.1, 'triangle', 0.1);
+            setTimeout(() => playTone(523.25, 0.12, 'triangle', 0.11), 70);
+            setTimeout(() => playTone(659.25, 0.14, 'sine', 0.12), 150);
+            setTimeout(() => playTone(783.99, 0.35, 'sine', 0.14), 240);
+            setTimeout(() => playNoise(0.15, 0.04), 100);
+        }
+
+        function playExit() {
+            initAudio();
+            playTone(392, 0.12, 'sawtooth', 0.07);
+            setTimeout(() => playTone(311.13, 0.15, 'sawtooth', 0.08), 100);
+            setTimeout(() => playTone(246.94, 0.3, 'sawtooth', 0.09), 200);
+            playNoise(0.2, 0.05);
+        }
+
+        function playWarning() {
+            initAudio();
+            for (let i = 0; i < 4; i++) {
+                setTimeout(() => {
+                    playTone(880, 0.1, 'square', 0.07);
+                    setTimeout(() => playTone(698.46, 0.1, 'square', 0.07), 110);
+                }, i * 280);
+            }
+        }
+
+        function playNear() {
+            initAudio();
+            playTone(988, 0.07, 'sine', 0.06);
+            setTimeout(() => playTone(1174.7, 0.08, 'sine', 0.05), 60);
+        }
+
+        function playClick() {
+            initAudio();
+            playTone(720, 0.04, 'sine', 0.05);
+            playTone(480, 0.05, 'triangle', 0.03);
+        }
+
+        function playCountdown() {
+            initAudio();
+            playTone(660, 0.08, 'sine', 0.07);
+        }
+
+        function playLevelUp() {
+            initAudio();
+            playTone(523.25, 0.08, 'sine', 0.08);
+            setTimeout(() => playTone(659.25, 0.08, 'sine', 0.09), 70);
+            setTimeout(() => playTone(783.99, 0.18, 'sine', 0.1), 140);
+        }
+
+        function startAmbient() {
+            initAudio();
+            if (ambientOsc) return;
+            ambientOsc = audioCtx.createOscillator();
+            ambientGain = audioCtx.createGain();
+            ambientOsc.type = 'sine';
+            ambientOsc.frequency.value = 110;
+            ambientGain.gain.value = 0.015;
+            ambientOsc.connect(ambientGain);
+            ambientGain.connect(audioCtx.destination);
+            ambientOsc.start();
+        }
+        function stopAmbient() {
+            if (ambientOsc) {
+                ambientGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                setTimeout(() => {
+                    try { ambientOsc.stop(); } catch(e){}
+                    ambientOsc = null;
+                }, 600);
+            }
+        }
+
+        // ==================== VISUAIS ====================
+        const flashEl = document.getElementById('flash');
+        function flashScreen() {
+            flashEl.classList.add('active');
+            setTimeout(() => flashEl.classList.remove('active'), 120);
+        }
+
+        const canvas = document.getElementById('confetti');
+        const ctx = canvas.getContext('2d');
+        const starsCanvas = document.getElementById('stars');
+        const starsCtx = starsCanvas.getContext('2d');
+        let confettiPieces = [];
+        let starPieces = [];
+        let confettiActive = false;
+
+        function resizeCanvas() {
+            canvas.width = starsCanvas.width = window.innerWidth;
+            canvas.height = starsCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function createConfetti(count = 100) {
+            confettiPieces = [];
+            const colors = ['#38bdf8','#818cf8','#c084fc','#34d399','#fbbf24','#f472b6','#fb7185','#22d3ee'];
+            for (let i = 0; i < count; i++) {
+                confettiPieces.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * -canvas.height,
+                    w: Math.random() * 11 + 4,
+                    h: Math.random() * 7 + 3,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    speed: Math.random() * 4 + 2.5,
+                    angle: Math.random() * 360,
+                    spin: Math.random() * 12 - 6,
+                    opacity: 1
+                });
+            }
+            starPieces = [];
+            for (let i = 0; i < 40; i++) {
+                starPieces.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height * 0.6,
+                    size: Math.random() * 3 + 1,
+                    speed: Math.random() * 1.5 + 0.5,
+                    opacity: 1,
+                    life: 1
+                });
+            }
+            confettiActive = true;
+            requestAnimationFrame(drawEffects);
+        }
+
+        function drawEffects() {
+            if (!confettiActive) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            starsCtx.clearRect(0, 0, starsCanvas.width, starsCanvas.height);
+            let alive = false;
+
+            confettiPieces.forEach(p => {
+                p.y += p.speed;
+                p.x += Math.sin(p.angle * Math.PI / 180) * 1.8;
+                p.angle += p.spin;
+                p.opacity -= 0.007;
+                if (p.opacity > 0 && p.y < canvas.height + 30) {
+                    alive = true;
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.angle * Math.PI / 180);
+                    ctx.globalAlpha = p.opacity;
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+                    ctx.restore();
+                }
+            });
+
+            starPieces.forEach(s => {
+                s.y -= s.speed;
+                s.life -= 0.012;
+                if (s.life > 0) {
+                    alive = true;
+                    starsCtx.beginPath();
+                    starsCtx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                    starsCtx.fillStyle = `rgba(255,255,200,${s.life})`;
+                    starsCtx.fill();
+                }
+            });
+
+            if (alive) requestAnimationFrame(drawEffects);
+            else {
+                confettiActive = false;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                starsCtx.clearRect(0, 0, starsCanvas.width, starsCanvas.height);
+            }
+        }
+
+        function floatEmojis(emojis = ['🔥','🚀','👑','⚡','✨'], count = 8) {
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const el = document.createElement('div');
+                    el.className = 'float-emoji';
+                    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    el.style.left = (20 + Math.random() * 60) + 'vw';
+                    el.style.bottom = '20vh';
+                    document.body.appendChild(el);
+                    setTimeout(() => el.remove(), 2300);
+                }, i * 120);
+            }
+        }
+
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 25; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.left = Math.random() * 100 + '%';
+                p.style.animationDuration = (7 + Math.random() * 12) + 's';
+                p.style.animationDelay = Math.random() * 10 + 's';
+                const size = 2 + Math.random() * 4;
+                p.style.width = p.style.height = size + 'px';
+                p.style.background = `rgba(${100 + Math.random()*155}, ${180 + Math.random()*75}, 255, ${0.3 + Math.random()*0.4})`;
+                container.appendChild(p);
+            }
+        }
+        createParticles();
+
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const ripple = document.createElement('span');
+                ripple.className = 'ripple';
+                const rect = this.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = (e.clientX - rect.left - size/2) + 'px';
+                ripple.style.top = (e.clientY - rect.top - size/2) + 'px';
+                this.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 600);
+            });
+        });
+
+        // ==================== LÓGICA ====================
         function obterNomeMototaxista() {
             let nome = localStorage.getItem('mototaxi_nome');
             if (!nome || nome.trim() === "") {
@@ -64,9 +788,16 @@
             return nome.trim();
         }
 
-        function trocarNome() {
-            localStorage.removeItem('mototaxi_nome');
-            location.reload();
+        async function trocarNome() {
+            playClick();
+            try {
+                await supabaseClient.from('fila').delete().eq('nome', nomeMototaxista);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                localStorage.removeItem('mototaxi_nome');
+                location.reload();
+            }
         }
 
         const nomeMototaxista = obterNomeMototaxista();
@@ -74,20 +805,17 @@
         function falar(texto) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
-                const mensagem = new SpeechSynthesisUtterance(texto);
-                mensagem.lang = 'pt-BR';
-                mensagem.rate = 1.1;
-                window.speechSynthesis.speak(mensagem);
+                const msg = new SpeechSynthesisUtterance(texto);
+                msg.lang = 'pt-BR';
+                msg.rate = 1.05;
+                msg.pitch = 1.1;
+                window.speechSynthesis.speak(msg);
             }
         }
 
         function vibrar(padrao) {
             if ('vibrate' in navigator) {
-                try {
-                    navigator.vibrate(padrao);
-                } catch (e) {
-                    console.error("Vibração bloqueada até interação do usuário", e);
-                }
+                try { navigator.vibrate(padrao); } catch(e){}
             }
         }
 
@@ -98,6 +826,11 @@
         let tempoParado = null;
         let estaNaFila = false;
         let avisoGpsFalado = false;
+        let progressInterval = null;
+        let ultimaPosicao = null;
+        let jaCelebrouPrimeiro = false;
+        let countdownBeeps = null;
+        let ultimoGpsOk = Date.now();
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
@@ -110,102 +843,167 @@
             return R * c;
         }
 
-        navigator.geolocation.watchPosition((pos) => {
-            avisoGpsFalado = false;
-            
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            const distancia = calcularDistancia(lat, lng, PONTO_LAT, PONTO_LNG);
+        function setStatus(classe, texto) {
+            const box = document.getElementById('status-box');
+            box.className = 'status ' + classe + ' pulse';
+            box.innerText = texto;
+            setTimeout(() => box.classList.remove('pulse'), 800);
+        }
 
-            document.getElementById('info-gps').innerText = `Distância do ponto: ${Math.round(distancia)}m`;
-
-            if (distancia <= RAIO_METROS) {
-                if (!estaNaFila && !tempoParado) {
-                    document.getElementById('status-box').className = 'status aguardando';
-                    document.getElementById('status-box').innerText = 'Status: Detectado no ponto. Aguardando 20s...';
-                    
-                    tempoParado = setTimeout(() => {
-                        entrarNaFila();
-                    }, 20000);
-                }
-            } else {
-                if (tempoParado) {
-                    clearTimeout(tempoParado);
-                    tempoParado = null;
-                }
-                if (estaNaFila) {
-                    sairDaFila();
-                } else {
-                    document.getElementById('status-box').className = 'status fora';
-                    document.getElementById('status-box').innerText = 'Status: Fora da fila';
-                }
-            }
-        }, (err) => {
-            console.error(err);
-            document.getElementById('info-gps').innerText = 'GPS desativado ou sem sinal!';
-            document.getElementById('status-box').className = 'status erro-gps';
-            document.getElementById('status-box').innerText = 'Status: GPS Desligado/Sem Sinal!';
-
-            if (!avisoGpsFalado) {
-                avisoGpsFalado = true;
-                vibrar([400, 200, 400]);
-                falar("Atenção, seu GPS foi desativado ou perdeu o sinal. Ative o GPS.");
-            }
-
-            if (estaNaFila) {
-                sairDaFila();
-            }
-        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
-
-        async function entrarNaFila() {
-            const { data: existente, error: erroBusca } = await supabaseClient
+        async function verificarSeJaEstaNaFila() {
+            const { data, error } = await supabaseClient
                 .from('fila')
                 .select('nome')
                 .eq('nome', nomeMototaxista);
+            if (!error && data && data.length > 0) {
+                estaNaFila = true;
+                setStatus('na-fila', 'Status: Na Fila! 🔥');
+                startAmbient();
+            }
+        }
 
-            if (erroBusca) {
-                console.error('Erro ao verificar existência na fila:', erroBusca);
+        function iniciarGPS() {
+            if (!navigator.geolocation) {
+                document.getElementById('info-gps').innerText = 'Seu navegador não suporta GPS.';
+                setStatus('erro-gps', 'Status: GPS não suportado');
+                falar("Seu navegador não suporta localização GPS.");
+                return;
             }
 
+            navigator.geolocation.watchPosition((pos) => {
+                avisoGpsFalado = false;
+                ultimoGpsOk = Date.now();
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                const distancia = calcularDistancia(lat, lng, PONTO_LAT, PONTO_LNG);
+                const info = document.getElementById('info-gps');
+                info.innerHTML = `<div class="radar"></div>Distância do ponto: ${Math.round(distancia)}m`;
+
+                if (distancia <= RAIO_METROS) {
+                    info.className = 'info-gps perto';
+                    if (estaNaFila) {
+                        setStatus('na-fila', 'Status: Na Fila! 🔥');
+                    } else if (!tempoParado) {
+                        setStatus('aguardando', 'Detectado no ponto! Aguardando 5s...');
+                        playNear();
+                        vibrar([80, 40, 80, 40, 120]);
+                        flashScreen();
+
+                        const progressCont = document.getElementById('progress-container');
+                        const progressBar = document.getElementById('progress-bar');
+                        progressCont.style.display = 'block';
+                        progressBar.style.width = '0%';
+                        let progresso = 0;
+
+                        countdownBeeps = setInterval(() => playCountdown(), 1000);
+
+                        progressInterval = setInterval(() => {
+                            progresso += 20;
+                            progressBar.style.width = progresso + '%';
+                            if (progresso >= 100) {
+                                clearInterval(progressInterval);
+                                clearInterval(countdownBeeps);
+                            }
+                        }, 1000);
+
+                        tempoParado = setTimeout(() => {
+                            entrarNaFila();
+                            progressCont.style.display = 'none';
+                            clearInterval(countdownBeeps);
+                        }, 5000);
+                    }
+                } else {
+                    info.className = 'info-gps longe';
+                    if (tempoParado) {
+                        clearTimeout(tempoParado);
+                        tempoParado = null;
+                        clearInterval(progressInterval);
+                        clearInterval(countdownBeeps);
+                        document.getElementById('progress-container').style.display = 'none';
+                    }
+                    if (estaNaFila) {
+                        sairDaFila();
+                    } else {
+                        setStatus('fora', 'Status: Fora da fila');
+                    }
+                }
+            }, (err) => {
+                console.error(err);
+                document.getElementById('info-gps').innerHTML = 'GPS desativado ou sem sinal!';
+                document.getElementById('info-gps').className = 'info-gps longe';
+                setStatus('erro-gps', 'Status: GPS Desligado/Sem Sinal!');
+                if (!avisoGpsFalado) {
+                    avisoGpsFalado = true;
+                    vibrar([300, 150, 300, 150, 400]);
+                    playWarning();
+                    falar("Atenção, seu GPS foi desativado ou perdeu o sinal. Ative o GPS.");
+                    showToast('⚠️ GPS perdido! Ative a localização', 'error');
+                    flashScreen();
+                }
+                if (estaNaFila) {
+                    sairDaFila();
+                }
+            }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 8000 });
+        }
+
+        async function entrarNaFila() {
+            const { data: existente } = await supabaseClient
+                .from('fila')
+                .select('nome')
+                .eq('nome', nomeMototaxista);
             if (existente && existente.length > 0) {
                 estaNaFila = true;
-                document.getElementById('status-box').className = 'status na-fila';
-                document.getElementById('status-box').innerText = 'Status: Na Fila!';
+                setStatus('na-fila', 'Status: Na Fila! 🔥');
+                startAmbient();
                 return;
             }
 
             estaNaFila = true;
-            document.getElementById('status-box').className = 'status na-fila';
-            document.getElementById('status-box').innerText = 'Status: Na Fila!';
+            setStatus('na-fila', 'Status: Na Fila! 🔥');
+            
+            playEnter();
+            vibrar([100, 50, 100, 50, 100, 50, 250]);
+            createConfetti(110);
+            floatEmojis(['🚀','🔥','⚡','✨','🏍️'], 10);
+            flashScreen();
+            falar("Você entrou na fila do ponto! Boa sorte!");
+            showToast('🚀 Você entrou na fila!', 'success');
+            startAmbient();
 
-            vibrar([300, 100, 300]);
-            falar("Você entrou na fila do ponto.");
-
-            const { error } = await supabaseClient.from('fila').insert([
-                { nome: nomeMototaxista }
-            ]);
-
-            if (error) {
-                console.error('Erro ao inserir:', error);
-            }
-
+            const { error } = await supabaseClient.from('fila').insert([{ nome: nomeMototaxista }]);
+            if (error) console.error(error);
             carregarFila();
         }
 
         async function sairDaFila() {
             estaNaFila = false;
-            document.getElementById('status-box').className = 'status fora';
-            document.getElementById('status-box').innerText = 'Status: Fora da fila / GPS ausente';
+            if (tempoParado) {
+                clearTimeout(tempoParado);
+                tempoParado = null;
+            }
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+            if (countdownBeeps) {
+                clearInterval(countdownBeeps);
+                countdownBeeps = null;
+            }
+            document.getElementById('progress-container').style.display = 'none';
 
-            vibrar(500);
+            jaCelebrouPrimeiro = false;
+            document.getElementById('minha-posicao').classList.remove('show');
+            document.getElementById('posicao-label').classList.remove('show');
+            stopAmbient();
+
+            setStatus('fora', 'Status: Fora da fila / GPS ausente');
+            playExit();
+            vibrar(450);
             falar("Você saiu da fila.");
+            showToast('Você saiu da fila', 'warn');
 
             const { error } = await supabaseClient.from('fila').delete().eq('nome', nomeMototaxista);
-            
-            if (error) {
-                console.error('Erro ao deletar:', error);
-            }
-
+            if (error) console.error(error);
             carregarFila();
         }
 
@@ -219,49 +1017,126 @@
             listaUl.innerHTML = '';
 
             if (error) {
-                console.error('Erro ao buscar fila:', error);
-                listaUl.innerHTML = '<li>Erro ao carregar a fila do banco.</li>';
+                listaUl.innerHTML = '<li>Erro ao carregar a fila.</li>';
                 return;
             }
-
             if (!data || data.length === 0) {
-                listaUl.innerHTML = '<li>A fila está vazia.</li>';
+                listaUl.innerHTML = '<li style="justify-content:center;color:#94a3b8;">A fila está vazia 😴</li>';
+                document.getElementById('minha-posicao').classList.remove('show');
+                document.getElementById('posicao-label').classList.remove('show');
                 return;
             }
 
+            let minhaPos = null;
             data.forEach((moto, index) => {
                 const li = document.createElement('li');
+                li.style.animationDelay = (index * 0.06) + 's';
                 if (index === 0) li.classList.add('primeiro');
-
+                if (moto.nome === nomeMototaxista) {
+                    li.classList.add('eu');
+                    minhaPos = index + 1;
+                }
                 const dataChegada = moto.criado_em ? new Date(moto.criado_em) : new Date();
-                const horaFormatada = dataChegada.toLocaleTimeString('pt-BR');
-
+                const horaFormatada = dataChegada.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                
+                // ===== LINHA CORRIGIDA =====
                 li.innerHTML = `
                     <div class="moto-info">
-                        <span class="moto-nome">${moto.nome}</span>
+                        <span class="moto-nome">${moto.nome}${moto.nome === nomeMototaxista ? ' (você)' : ''}</span>
                         <span class="moto-hora">Chegada: ${horaFormatada}</span>
                     </div>
                     <span class="moto-posicao">${index + 1}º</span>
                 `;
                 listaUl.appendChild(li);
             });
+
+            const posEl = document.getElementById('minha-posicao');
+            const labelEl = document.getElementById('posicao-label');
+
+            if (minhaPos !== null) {
+                posEl.textContent = minhaPos + 'º';
+                posEl.classList.add('show');
+                labelEl.classList.add('show');
+
+                if (minhaPos === 1 && !jaCelebrouPrimeiro) {
+                    jaCelebrouPrimeiro = true;
+                    playSuccess();
+                    createConfetti(140);
+                    floatEmojis(['👑','🏆','🔥','⚡','✨','🎉'], 14);
+                    vibrar([200, 80, 200, 80, 200, 80, 400]);
+                    flashScreen();
+                    setTimeout(flashScreen, 200);
+                    falar("Você é o próximo da vez! Prepare-se!");
+                    showToast('👑 VOCÊ É O PRÓXIMO!', 'success');
+                }
+
+                if (ultimaPosicao !== null && minhaPos < ultimaPosicao) {
+                    playLevelUp();
+                    showToast(`🔥 Subiu para ${minhaPos}º lugar!`, 'success');
+                    vibrar([70, 40, 70, 40, 100]);
+                    floatEmojis(['⬆️','🔥'], 4);
+                }
+                ultimaPosicao = minhaPos;
+            } else {
+                posEl.classList.remove('show');
+                labelEl.classList.remove('show');
+                ultimaPosicao = null;
+                jaCelebrouPrimeiro = false;
+            }
         }
 
+        // ==================== INIT ====================
+        document.body.addEventListener('click', initAudio, { once: true });
+        document.body.addEventListener('touchstart', initAudio, { once: true });
+
         carregarFila();
-        
-        // Atualiza a fila em tempo real via WebSocket do Supabase
+        verificarSeJaEstaNaFila();
+        iniciarGPS();
+
         supabaseClient
             .channel('public:fila')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'fila' }, () => {
-                carregarFila();
-            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'fila' }, () => carregarFila())
             .subscribe();
 
-        // Garante atualização instantânea caso o aplicativo volte do segundo plano no Android
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
                 carregarFila();
+                verificarSeJaEstaNaFila();
             }
+        });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW ok:', reg.scope))
+                    .catch(err => console.error('SW falhou:', err));
+            });
+        }
+
+        let deferredPrompt;
+        const btnInstalar = document.getElementById('btn-instalar');
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            btnInstalar.style.display = 'block';
+        });
+        btnInstalar.addEventListener('click', async () => {
+            playClick();
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                playSuccess();
+                createConfetti(70);
+                showToast('🎉 App instalado com sucesso!', 'success');
+            }
+            deferredPrompt = null;
+            btnInstalar.style.display = 'none';
+        });
+        window.addEventListener('appinstalled', () => {
+            btnInstalar.style.display = 'none';
+            createConfetti(80);
+            floatEmojis(['📲','🎉','✨'], 6);
         });
     </script>
 </body>
