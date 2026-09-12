@@ -822,8 +822,10 @@
         const PONTO_LAT = -8.442719; 
         const PONTO_LNG = -35.014781;
         const RAIO_METROS = 50;
+        const TEMPO_TOLERANCIA_SAIDA_MS = 15000; // 15 segundos de tolerância para oscilação de sinal
 
         let tempoParado = null;
+        let timerSaida = null; // Timer de tolerância para perda de sinal
         let estaNaFila = false;
         let avisoGpsFalado = false;
         let progressInterval = null;
@@ -879,6 +881,13 @@
                 const info = document.getElementById('info-gps');
                 info.innerHTML = `<div class="radar"></div>Distância do ponto: ${Math.round(distancia)}m`;
 
+                // Se o sinal voltou e havia um timer de saída rodando, cancelamos a saída
+                if (timerSaida) {
+                    clearTimeout(timerSaida);
+                    timerSaida = null;
+                    showToast('🔄 Sinal recuperado a tempo!', 'success');
+                }
+
                 if (distancia <= RAIO_METROS) {
                     info.className = 'info-gps perto';
                     if (estaNaFila) {
@@ -921,9 +930,16 @@
                         clearInterval(countdownBeeps);
                         document.getElementById('progress-container').style.display = 'none';
                     }
-                    if (estaNaFila) {
-                        sairDaFila();
-                    } else {
+                    
+                    if (estaNaFila && !timerSaida) {
+                        setStatus('aguardando', 'Sinal instável... Verificando saída (15s)');
+                        showToast('⚠️ Sinal fraco, aguardando reconexão...', 'warn');
+                        
+                        timerSaida = setTimeout(() => {
+                            sairDaFila();
+                            timerSaida = null;
+                        }, TEMPO_TOLERANCIA_SAIDA_MS);
+                    } else if (!estaNaFila) {
                         setStatus('fora', 'Status: Fora da fila');
                     }
                 }
@@ -932,16 +948,21 @@
                 document.getElementById('info-gps').innerHTML = 'GPS desativado ou sem sinal!';
                 document.getElementById('info-gps').className = 'info-gps longe';
                 setStatus('erro-gps', 'Status: GPS Desligado/Sem Sinal!');
+                
                 if (!avisoGpsFalado) {
                     avisoGpsFalado = true;
                     vibrar([300, 150, 300, 150, 400]);
                     playWarning();
-                    falar("Atenção, seu GPS foi desativado ou perdeu o sinal. Ative o GPS.");
-                    showToast('⚠️ GPS perdido! Ative a localização', 'error');
+                    falar("Atenção, seu GPS perdeu o sinal. Tentando reconectar.");
+                    showToast('⚠️ GPS perdido! Tentando reconectar...', 'error');
                     flashScreen();
                 }
-                if (estaNaFila) {
-                    sairDaFila();
+
+                if (estaNaFila && !timerSaida) {
+                    timerSaida = setTimeout(() => {
+                        sairDaFila();
+                        timerSaida = null;
+                    }, TEMPO_TOLERANCIA_SAIDA_MS);
                 }
             }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 8000 });
         }
@@ -1039,7 +1060,6 @@
                 const dataChegada = moto.criado_em ? new Date(moto.criado_em) : new Date();
                 const horaFormatada = dataChegada.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                 
-                // ===== TRECHO CORRIGIDO =====
                 const textoVoce = moto.nome === nomeMototaxista ? ' (você)' : '';
                 
                 li.innerHTML = `
